@@ -4,7 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5d7b1453-3ca3-40d8-b41b-4de70de5bffe" name="Changes" comment="">
+    <list default="true" id="6cf99830-3c8e-43f8-a14d-54c075fa140e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -31,7 +32,7 @@
   "customColor": "",
   "associatedIndex": 4
 }]]></component>
-  <component name="ProjectId" id="36YtYFhevwSv89T6x9E4YSrXHSf" />
+  <component name="ProjectId" id="36YuouVw3br6uDQLPaR6pkqcd4r" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -58,12 +59,12 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="5d7b1453-3ca3-40d8-b41b-4de70de5bffe" name="Changes" comment="" />
-      <created>1765195379495</created>
+      <changelist id="6cf99830-3c8e-43f8-a14d-54c075fa140e" name="Changes" comment="" />
+      <created>1765196005464</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1765195379495</updated>
-      <workItem from="1765195381332" duration="25000" />
+      <updated>1765196005464</updated>
+      <workItem from="1765196007815" duration="25000" />
     </task>
     <servers />
   </component>
