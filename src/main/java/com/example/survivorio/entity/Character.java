@@ -1,0 +1,135 @@
+package com.example.survivorio.entity;
+
+public class Character {
+    private Long id;
+    private String name;
+    private String ancestry;
+    private String className;
+    private int level;
+    private int xp;
+
+    // Attribute
+    private int str;
+    private int dex;
+    private int con;
+    private int intel; // "int" ist ein Schlüsselwort, daher intel
+    private int wis;
+    private int cha;
+
+    // Kampfwerte
+    private int hp;
+    private int ac;
+
+    // Flavour-Felder
+    private String title;
+    private String alignment;
+    private String background;
+    private String deity;
+
+    // Für Liste & Sortierung
+    private String createdAt; // ISO-String (z. B. 2025-12-07T10:00:00Z)
+
+    public Character() {
+    }
+
+    public Character(
+            Long id,
+            String name,
+            String ancestry,
+            String className,
+            int level,
+            int xp,
+            int str,
+            int dex,
+            int con,
+            int intel,
+            int wis,
+            int cha,
+            int hp,
+            int ac,
+            String title,
+            String alignment,
+            String background,
+            String deity,
+            String createdAt
+    ) {
+        this.id = id;
+        this.name = name;
+        this.ancestry = ancestry;
+        this.className = className;
+        this.level = level;
+        this.xp = xp;
+        this.str = str;
+        this.dex = dex;
+        this.con = con;
+        this.intel = intel;
+        this.wis = wis;
+        this.cha = cha;
+        this.hp = hp;
+        this.ac = ac;
+        this.title = title;
+        this.alignment = alignment;
+        this.background = background;
+        this.deity = deity;
+        this.createdAt = createdAt;
+    }
+
+    // Getter & Setter (IDE kann sie dir auch generieren)
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getAncestry() { return ancestry; }
+    public void setAncestry(String ancestry) { this.ancestry = ancestry; }
+
+    public String getClassName() { return className; }
+    public void setClassName(String className) { this.className = className; }
+
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
+
+    public int getXp() { return xp; }
+    public void setXp(int xp) { this.xp = xp; }
+
+    public int getStr() { return str; }
+    public void setStr(int str) { this.str = str; }
+
+    public int getDex() { return dex; }
+    public void setDex(int dex) { this.dex = dex; }
+
+    public int getCon() { return con; }
+    public void setCon(int con) { this.con = con; }
+
+    public int getIntel() { return intel; }
+    public void setIntel(int intel) { this.intel = intel; }
+
+    public int getWis() { return wis; }
+    public void setWis(int wis) { this.wis = wis; }
+
+    public int getCha() { return cha; }
+    public void setCha(int cha) { this.cha = cha; }
+
+    public int getHp() { return hp; }
+    public void setHp(int hp) { this.hp = hp; }
+
+    public int getAc() { return ac; }
+    public void setAc(int ac) { this.ac = ac; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getAlignment() { return alignment; }
+    public void setAlignment(String alignment) { this.alignment = alignment; }
+
+    public String getBackground() { return background; }
+    public void setBackground(String background) { this.background = background; }
+
+    public String getDeity() { return deity; }
+    public void setDeity(String deity) { this.deity = deity; }
+
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+}
