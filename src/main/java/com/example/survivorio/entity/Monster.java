@@ -1,20 +1,37 @@
 package com.example.survivorio.entity;
 
-public class Monster {
-    private Long id;
-    private String name;
-    private String type;          // z. B. Beast, Undead, Dragon
-    private int armorClass;
-    private int hitPoints;
-    private String challenge;     // z. B. "1/2", "3", etc.
-    private String notes;         // Beschreibung / Angriffe
-    private String createdAt;     // ISO-String
+import jakarta.persistence.*;
 
+@Entity
+@Table(name = "monsters")
+public class Monster {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String type;
+
+    @Column(name = "armor_class")
+    private int armorClass;
+
+    @Column(name = "hit_points")
+    private int hitPoints;
+
+    private String challenge;
+
+    @Column(length = 2000)
+    private String notes;
+
+    private String createdAt;
+
+    // 🔹 JPA braucht leeren Konstruktor
     public Monster() {
     }
 
+    // 🔹 Komfort-Konstruktor
     public Monster(
-            Long id,
             String name,
             String type,
             int armorClass,
@@ -23,7 +40,6 @@ public class Monster {
             String notes,
             String createdAt
     ) {
-        this.id = id;
         this.name = name;
         this.type = type;
         this.armorClass = armorClass;
@@ -33,8 +49,9 @@ public class Monster {
         this.createdAt = createdAt;
     }
 
+    // 🔹 Getter & Setter
+
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

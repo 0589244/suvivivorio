@@ -1,81 +1,41 @@
 package com.example.survivorio.entity;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "characters")
 public class Character {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
     private String ancestry;
     private String className;
     private int level;
     private int xp;
 
-    // Attribute
     private int str;
     private int dex;
     private int con;
-    private int intel; // "int" ist ein Schlüsselwort, daher intel
+    private int intel;
     private int wis;
     private int cha;
 
-    // Kampfwerte
     private int hp;
     private int ac;
 
-    // Flavour-Felder
     private String title;
     private String alignment;
     private String background;
     private String deity;
 
-    // Für Liste & Sortierung
-    private String createdAt; // ISO-String (z. B. 2025-12-07T10:00:00Z)
+    private String createdAt;
 
-    public Character() {
-    }
+    public Character() {}
 
-    public Character(
-            Long id,
-            String name,
-            String ancestry,
-            String className,
-            int level,
-            int xp,
-            int str,
-            int dex,
-            int con,
-            int intel,
-            int wis,
-            int cha,
-            int hp,
-            int ac,
-            String title,
-            String alignment,
-            String background,
-            String deity,
-            String createdAt
-    ) {
-        this.id = id;
-        this.name = name;
-        this.ancestry = ancestry;
-        this.className = className;
-        this.level = level;
-        this.xp = xp;
-        this.str = str;
-        this.dex = dex;
-        this.con = con;
-        this.intel = intel;
-        this.wis = wis;
-        this.cha = cha;
-        this.hp = hp;
-        this.ac = ac;
-        this.title = title;
-        this.alignment = alignment;
-        this.background = background;
-        this.deity = deity;
-        this.createdAt = createdAt;
-    }
-
-    // Getter & Setter (IDE kann sie dir auch generieren)
-
+    // Getter/Setter
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
