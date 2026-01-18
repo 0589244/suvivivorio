@@ -31,6 +31,18 @@ public class Character {
     private String background;
     private String deity;
 
+    @Column(length = 2000)
+    private String attacks;
+    @Column(length = 4000)
+    private String talents;
+    @Column(length = 4000)
+    private String spells;
+    @Column(length = 6000)
+    private String gear;
+    @Column(length = 6000)
+    private String notes;
+
+
     private String createdAt;
 
     public Character() {}
@@ -92,4 +104,19 @@ public class Character {
 
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    public String getAttacks() { return attacks; }
+    public void setAttacks(String attacks) { this.attacks = attacks; }
+
+    public String getTalents() { return talents; }
+    public void setTalents(String talents) { this.talents = talents; }
+
+    public String getSpells() { return spells; }
+    public void setSpells(String spells) { this.spells = spells; }
+
+    public String getGear() { return gear; }
+    public void setGear(String gear) { this.gear = gear; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 }

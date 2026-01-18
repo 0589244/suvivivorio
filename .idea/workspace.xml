@@ -6,10 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="d0c8afa9-718b-4985-afb9-af96236fb2d6" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/frontend/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/src/main.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/target/classes/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,8 +61,8 @@
         <option value="package.json" />
         <option value="HTML File" />
         <option value="JavaScript File" />
-        <option value="Vue Composition API Component" />
         <option value="Class" />
+        <option value="Vue Composition API Component" />
       </list>
     </option>
   </component>
@@ -225,7 +228,8 @@
       <workItem from="1768590251284" duration="979000" />
       <workItem from="1768654943542" duration="3501000" />
       <workItem from="1768659501077" duration="327000" />
-      <workItem from="1768659845467" duration="2503000" />
+      <workItem from="1768659845467" duration="6397000" />
+      <workItem from="1768738009868" duration="22067000" />
     </task>
     <servers />
   </component>
