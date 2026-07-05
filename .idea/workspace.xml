@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d0c8afa9-718b-4985-afb9-af96236fb2d6" name="Changes" comment="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle.properties" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -116,7 +114,7 @@
   <component name="RunManager">
     <configuration name="SurvivorIoApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <envs>
-        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan" />
+        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan?sslmode=require" />
         <env name="DB_USER" value="okan_user" />
         <env name="DB_PASSWORD" value="y0W6V0ETHMP9MHIQ9SsLz4cqqiAYdCTy" />
       </envs>
@@ -182,7 +180,11 @@
       <workItem from="1783226777211" duration="365000" />
       <workItem from="1783227310460" duration="165000" />
       <workItem from="1783227497728" duration="229000" />
-      <workItem from="1783228149795" duration="11000" />
+      <workItem from="1783228149795" duration="749000" />
+      <workItem from="1783228942100" duration="64000" />
+      <workItem from="1783229427874" duration="38000" />
+      <workItem from="1783229493163" duration="1000" />
+      <workItem from="1783229684960" duration="231000" />
     </task>
     <task id="LOCAL-00001" summary="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
       <option name="closed" value="true" />

@@ -3,9 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import SheetList from './components/SheetList.vue'
 import type { CharacterSheet, MonsterSheet, SheetRecord, SheetType } from './types/sheets'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL || 'http://localhost:8080')
 const TOKEN_STORAGE_KEY = 'dnd-sheet-token'
 const USERNAME_STORAGE_KEY = 'dnd-sheet-username'
+const REQUEST_TIMEOUT_MS = 18000
+const RETRY_DELAYS_MS = [1800, 4200, 7000]
 
 type AuthResponse = {
   token: string
@@ -17,6 +19,7 @@ const currentUsername = ref(localStorage.getItem(USERNAME_STORAGE_KEY) || '')
 const isLoggedIn = computed(() => Boolean(authToken.value && currentUsername.value))
 const isAuthChecking = ref(Boolean(authToken.value))
 const isAuthBusy = ref(false)
+const isBackendWarming = ref(false)
 const loginUsername = ref('')
 const loginPassword = ref('')
 const loginError = ref<string | null>(null)
@@ -165,7 +168,13 @@ function numberOrDefault(value: unknown, fallback: number) {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+function normalizeApiBaseUrl(url: string) {
+  return url.replace(/\/+$/, '')
+}
+
 onMounted(async () => {
+  warmUpBackend()
+
   if (!authToken.value) {
     isAuthChecking.value = false
     return
@@ -183,26 +192,48 @@ onMounted(async () => {
   }
 })
 
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function warmUpBackend() {
+  isBackendWarming.value = true
+
+  try {
+    await apiFetch<{ status: string }>('/api/health', {
+      skipAuth: true,
+      retry: false,
+      timeoutMs: 25000,
+    })
+  } catch (error) {
+    console.warn('Backend warmup failed', error)
+  } finally {
+    isBackendWarming.value = false
+  }
+}
+
+type ApiFetchOptions = RequestInit & {
+  retry?: boolean
+  skipAuth?: boolean
+  timeoutMs?: number
+}
+
+async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
 
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
-  if (authToken.value) {
+  if (authToken.value && !(options as ApiFetchOptions).skipAuth) {
     headers.set('Authorization', `Bearer ${authToken.value}`)
   }
 
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
       ...options,
       headers,
     })
   } catch (error) {
     throw new Error(
-      `Backend nicht erreichbar (${API_BASE_URL}). Pruefe, ob Spring Boot auf Port 8080 laeuft und ob VITE_API_URL stimmt.`,
+      `Das Backend startet gerade oder ist kurz nicht erreichbar (${API_BASE_URL}). Bitte warte einen Moment und versuche es erneut.`,
     )
   }
 
@@ -219,6 +250,58 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   }
 
   return (await response.json()) as T
+}
+
+async function fetchWithRetry(url: string, options: ApiFetchOptions) {
+  const retry = options.retry !== false
+  const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS
+  const delays = retry ? RETRY_DELAYS_MS : []
+  let lastError: unknown
+
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, options, timeoutMs)
+
+      if (!retry || !isTemporaryBackendStatus(response.status) || attempt === delays.length) {
+        return response
+      }
+
+      await wait(delays[attempt] ?? 0)
+    } catch (error) {
+      lastError = error
+
+      if (!retry || attempt === delays.length) {
+        throw error
+      }
+
+      await wait(delays[attempt] ?? 0)
+    }
+  }
+
+  throw lastError
+}
+
+async function fetchWithTimeout(url: string, options: ApiFetchOptions, timeoutMs: number) {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+  const { retry, skipAuth, timeoutMs: _timeoutMs, signal, ...fetchOptions } = options
+
+  try {
+    return await fetch(url, {
+      ...fetchOptions,
+      signal: signal ?? controller.signal,
+    })
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
+function isTemporaryBackendStatus(status: number) {
+  return [408, 425, 429, 500, 502, 503, 504].includes(status)
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 async function readErrorMessage(response: Response) {
@@ -498,6 +581,9 @@ function upsertSheet(sheet: SheetRecord) {
           </label>
 
           <p v-if="loginError" class="error-msg">{{ loginError }}</p>
+          <p v-else-if="isBackendWarming" class="success-msg">
+            Backend wird vorbereitet. Der erste Login kann kurz dauern.
+          </p>
 
           <div class="auth-actions">
             <button class="primary" type="button" :disabled="isAuthBusy" @click="handleLogin">
@@ -531,6 +617,9 @@ function upsertSheet(sheet: SheetRecord) {
 
           <p v-if="regError" class="error-msg">{{ regError }}</p>
           <p v-if="regSuccess" class="success-msg">{{ regSuccess }}</p>
+          <p v-else-if="isBackendWarming" class="success-msg">
+            Backend wird vorbereitet. Das erste Erstellen kann kurz dauern.
+          </p>
 
           <div class="auth-actions">
             <button class="primary" type="button" :disabled="isAuthBusy" @click="handleRegister">
