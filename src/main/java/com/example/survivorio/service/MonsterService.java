@@ -1,5 +1,6 @@
 package com.example.survivorio.service;
 
+import com.example.survivorio.entity.AppUser;
 import com.example.survivorio.entity.Monster;
 import com.example.survivorio.repository.MonsterRepository;
 import org.springframework.http.HttpStatus;
@@ -18,20 +19,21 @@ public class MonsterService {
         this.repo = repo;
     }
 
-    public List<Monster> getAll() {
-        return repo.findAll();
+    public List<Monster> getAll(AppUser owner) {
+        return repo.findAllByOwnerOrderByCreatedAtDesc(owner);
     }
 
-    public Monster create(Monster monster) {
+    public Monster create(AppUser owner, Monster monster) {
         monster.setId(null);
+        monster.setOwner(owner);
         if (monster.getCreatedAt() == null || monster.getCreatedAt().isBlank()) {
             monster.setCreatedAt(Instant.now().toString());
         }
         return repo.save(monster);
     }
 
-    public Monster update(Long id, Monster data) {
-        Monster existing = repo.findById(id)
+    public Monster update(AppUser owner, Long id, Monster data) {
+        Monster existing = repo.findByIdAndOwner(id, owner)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Monster not found"));
 
         existing.setName(data.getName());

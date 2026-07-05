@@ -6,6 +6,16 @@
   <component name="ChangeListManager">
     <list default="true" id="d0c8afa9-718b-4985-afb9-af96236fb2d6" name="Changes" comment="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/frontend/src/views/SheetView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/src/views/SheetView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/repository/CharacterRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/repository/CharacterRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/repository/MonsterRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/repository/MonsterRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -75,47 +85,47 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Application.SurvivorIoApplication.executor": "Run",
-    "DefaultHtmlFileTemplate": "HTML File",
-    "Gradle.Build suvivivorio.executor": "Run",
-    "Node.js.3. vite.config.js.executor": "Run",
-    "Node.js.main.js.executor": "Run",
-    "RequestMappingsPanelOrder0": "0",
-    "RequestMappingsPanelOrder1": "1",
-    "RequestMappingsPanelWidth0": "75",
-    "RequestMappingsPanelWidth1": "75",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "Spring Boot.SurvivorIoApplication.executor": "Run",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Uni/okanprog3derlappen/prog3",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_interpreter_path": "C:/Users/okan0/AppData/Roaming/JetBrains/IntelliJIdea2025.1/node/versions/24.11.0/node",
-    "nodejs_package_manager_path": "npm",
-    "onboarding.tips.debug.path": "C:/Uni/okanprog3derlappen/prog3/src/Main.java",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.0",
-    "ts.external.directory.path": "C:\\Users\\okan0\\IdeaProjects\\suvivivorio\\frontend\\frontend\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.SurvivorIoApplication.executor&quot;: &quot;Run&quot;,
+    &quot;DefaultHtmlFileTemplate&quot;: &quot;HTML File&quot;,
+    &quot;Gradle.Build suvivivorio.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.3. vite.config.js.executor&quot;: &quot;Run&quot;,
+    &quot;Node.js.main.js.executor&quot;: &quot;Run&quot;,
+    &quot;RequestMappingsPanelOrder0&quot;: &quot;0&quot;,
+    &quot;RequestMappingsPanelOrder1&quot;: &quot;1&quot;,
+    &quot;RequestMappingsPanelWidth0&quot;: &quot;75&quot;,
+    &quot;RequestMappingsPanelWidth1&quot;: &quot;75&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;Spring Boot.SurvivorIoApplication.executor&quot;: &quot;Run&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Uni/okanprog3derlappen/prog3&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_interpreter_path&quot;: &quot;C:/Users/okan0/AppData/Roaming/JetBrains/IntelliJIdea2025.1/node/versions/24.11.0/node&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;onboarding.tips.debug.path&quot;: &quot;C:/Uni/okanprog3derlappen/prog3/src/Main.java&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\okan0\\IdeaProjects\\suvivivorio\\frontend\\frontend\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+  &quot;keyToStringList&quot;: {
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="SurvivorIoApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <envs>
-        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan?sslmode=require" />
+        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan" />
         <env name="DB_USER" value="okan_user" />
         <env name="DB_PASSWORD" value="y0W6V0ETHMP9MHIQ9SsLz4cqqiAYdCTy" />
       </envs>
@@ -176,6 +186,10 @@
       <workItem from="1783160927770" duration="2635000" />
       <workItem from="1783213774693" duration="637000" />
       <workItem from="1783218060767" duration="996000" />
+      <workItem from="1783226370534" duration="78000" />
+      <workItem from="1783226740661" duration="27000" />
+      <workItem from="1783226777211" duration="365000" />
+      <workItem from="1783227310460" duration="165000" />
     </task>
     <task id="LOCAL-00001" summary="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
       <option name="closed" value="true" />
@@ -185,7 +199,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783220717965</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
+      <option name="closed" value="true" />
+      <created>1783224498065</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1783224498065</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -238,6 +260,10 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java" />
+    <option name="LAST_COMMIT_MESSAGE" value="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

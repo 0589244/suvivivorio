@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import SheetList from './components/SheetList.vue'
 import type { CharacterSheet, MonsterSheet, SheetRecord, SheetType } from './types/sheets'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const TOKEN_STORAGE_KEY = 'dnd-sheet-token'
+const USERNAME_STORAGE_KEY = 'dnd-sheet-username'
 
-const isLoggedIn = ref(false)
+type AuthResponse = {
+  token: string
+  username: string
+}
+
+const authToken = ref(localStorage.getItem(TOKEN_STORAGE_KEY) || '')
+const currentUsername = ref(localStorage.getItem(USERNAME_STORAGE_KEY) || '')
+const isLoggedIn = computed(() => Boolean(authToken.value && currentUsername.value))
+const isAuthChecking = ref(Boolean(authToken.value))
+const isAuthBusy = ref(false)
 const loginUsername = ref('')
 const loginPassword = ref('')
 const loginError = ref<string | null>(null)
@@ -154,25 +165,103 @@ function numberOrDefault(value: unknown, fallback: number) {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+onMounted(async () => {
+  if (!authToken.value) {
+    isAuthChecking.value = false
+    return
+  }
+
+  try {
+    const auth = await apiFetch<AuthResponse>('/api/auth/me')
+    setAuth(auth)
+    await loadSheets()
+  } catch (error) {
+    console.error(error)
+    clearAuth()
+  } finally {
+    isAuthChecking.value = false
+  }
+})
+
+async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+
+  if (options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  if (authToken.value) {
+    headers.set('Authorization', `Bearer ${authToken.value}`)
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    })
+  } catch (error) {
+    throw new Error(
+      `Backend nicht erreichbar (${API_BASE_URL}). Pruefe, ob Spring Boot auf Port 8080 laeuft und ob VITE_API_URL stimmt.`,
+    )
+  }
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response)
+    if (response.status === 401 && !path.startsWith('/api/auth/login')) {
+      clearAuth()
+    }
+    throw new Error(message)
+  }
+
+  if (response.status === 204) {
+    return null as T
+  }
+
+  return (await response.json()) as T
+}
+
+async function readErrorMessage(response: Response) {
+  const fallback = `HTTP ${response.status}`
+  const text = await response.text()
+
+  if (!text) {
+    return fallback
+  }
+
+  try {
+    const data = JSON.parse(text)
+    return data.message || data.error || fallback
+  } catch {
+    return text
+  }
+}
+
+function setAuth(auth: AuthResponse) {
+  authToken.value = auth.token
+  currentUsername.value = auth.username
+  localStorage.setItem(TOKEN_STORAGE_KEY, auth.token)
+  localStorage.setItem(USERNAME_STORAGE_KEY, auth.username)
+}
+
+function clearAuth() {
+  authToken.value = ''
+  currentUsername.value = ''
+  sheets.value = []
+  activeSheet.value = null
+  localStorage.removeItem(TOKEN_STORAGE_KEY)
+  localStorage.removeItem(USERNAME_STORAGE_KEY)
+}
+
 async function loadSheets() {
   isLoadingSheets.value = true
   loadError.value = null
 
   try {
-    const [characterResponse, monsterResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/characters`),
-      fetch(`${API_BASE_URL}/api/monsters`),
+    const [characters, monsters] = await Promise.all([
+      apiFetch<Partial<CharacterSheet>[]>('/api/characters'),
+      apiFetch<Partial<MonsterSheet>[]>('/api/monsters'),
     ])
-
-    if (!characterResponse.ok) {
-      throw new Error(`Characters HTTP ${characterResponse.status}`)
-    }
-    if (!monsterResponse.ok) {
-      throw new Error(`Monsters HTTP ${monsterResponse.status}`)
-    }
-
-    const characters = (await characterResponse.json()) as Partial<CharacterSheet>[]
-    const monsters = (await monsterResponse.json()) as Partial<MonsterSheet>[]
 
     sheets.value = [
       ...characters.map((character) => normalizeCharacter(character)),
@@ -187,7 +276,7 @@ async function loadSheets() {
   }
 }
 
-function handleLogin() {
+async function handleLogin() {
   loginError.value = null
 
   if (!loginUsername.value || !loginPassword.value) {
@@ -195,12 +284,29 @@ function handleLogin() {
     return
   }
 
-  isLoggedIn.value = true
-  loginPassword.value = ''
-  loadSheets()
+  isAuthBusy.value = true
+
+  try {
+    const auth = await apiFetch<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: loginUsername.value,
+        password: loginPassword.value,
+      }),
+    })
+
+    setAuth(auth)
+    loginPassword.value = ''
+    await loadSheets()
+  } catch (error) {
+    loginError.value =
+      error instanceof Error ? error.message : 'Login fehlgeschlagen.'
+  } finally {
+    isAuthBusy.value = false
+  }
 }
 
-function handleRegister() {
+async function handleRegister() {
   regError.value = null
   regSuccess.value = null
 
@@ -214,10 +320,45 @@ function handleRegister() {
     return
   }
 
-  loginUsername.value = regUsername.value
-  regSuccess.value = 'Account lokal vorbereitet. Du kannst dich jetzt einloggen.'
-  regPassword.value = ''
-  regPasswordRepeat.value = ''
+  isAuthBusy.value = true
+
+  try {
+    const auth = await apiFetch<AuthResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: regUsername.value,
+        password: regPassword.value,
+      }),
+    })
+
+    setAuth(auth)
+    loginUsername.value = auth.username
+    regPassword.value = ''
+    regPasswordRepeat.value = ''
+    showRegister.value = false
+    await loadSheets()
+  } catch (error) {
+    regError.value =
+      error instanceof Error ? error.message : 'Registrierung fehlgeschlagen.'
+  } finally {
+    isAuthBusy.value = false
+  }
+}
+
+async function handleLogout() {
+  try {
+    if (authToken.value) {
+      await apiFetch<null>('/api/auth/logout', { method: 'POST' })
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    clearAuth()
+    loginPassword.value = ''
+    regPassword.value = ''
+    regPasswordRepeat.value = ''
+    showRegister.value = false
+  }
 }
 
 function openNewCharacter() {
@@ -259,27 +400,18 @@ async function saveActiveSheet() {
   const sheet = activeSheet.value
   const endpoint = sheet.sheetType === 'character' ? 'characters' : 'monsters'
   const method = sheet.id ? 'PUT' : 'POST'
-  const url = `${API_BASE_URL}/api/${endpoint}${sheet.id ? `/${sheet.id}` : ''}`
+  const path = `/api/${endpoint}${sheet.id ? `/${sheet.id}` : ''}`
   const payload = toBackendPayload(sheet)
 
   try {
-    const response = await fetch(url, {
+    const savedData = await apiFetch<Partial<SheetRecord>>(path, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(payload),
     })
-
-    if (!response.ok) {
-      throw new Error(`Speichern fehlgeschlagen: HTTP ${response.status}`)
-    }
-
-    const savedData = await response.json()
     const savedSheet =
       sheet.sheetType === 'character'
-        ? normalizeCharacter(savedData)
-        : normalizeMonster(savedData)
+        ? normalizeCharacter(savedData as Partial<CharacterSheet>)
+        : normalizeMonster(savedData as Partial<MonsterSheet>)
 
     upsertSheet(savedSheet)
     activeSheet.value = cloneSheet(savedSheet)
@@ -339,7 +471,16 @@ function upsertSheet(sheet: SheetRecord) {
 
 <template>
   <div class="app-root">
-    <section v-if="!isLoggedIn" class="auth-screen">
+    <section v-if="isAuthChecking" class="auth-screen">
+      <div class="auth-backdrop"></div>
+      <div class="auth-card">
+        <p class="kicker">Campaign sheets</p>
+        <h1>DnD Sheet Manager</h1>
+        <p class="success-msg">Session wird geprueft...</p>
+      </div>
+    </section>
+
+    <section v-else-if="!isLoggedIn" class="auth-screen">
       <div class="auth-backdrop"></div>
       <div class="auth-card">
         <p class="kicker">Campaign sheets</p>
@@ -359,8 +500,10 @@ function upsertSheet(sheet: SheetRecord) {
           <p v-if="loginError" class="error-msg">{{ loginError }}</p>
 
           <div class="auth-actions">
-            <button class="primary" type="button" @click="handleLogin">Einloggen</button>
-            <button class="secondary" type="button" @click="showRegister = true">
+            <button class="primary" type="button" :disabled="isAuthBusy" @click="handleLogin">
+              {{ isAuthBusy ? 'Prueft...' : 'Einloggen' }}
+            </button>
+            <button class="secondary" type="button" :disabled="isAuthBusy" @click="showRegister = true">
               Registrieren
             </button>
           </div>
@@ -390,8 +533,10 @@ function upsertSheet(sheet: SheetRecord) {
           <p v-if="regSuccess" class="success-msg">{{ regSuccess }}</p>
 
           <div class="auth-actions">
-            <button class="primary" type="button" @click="handleRegister">Erstellen</button>
-            <button class="secondary" type="button" @click="showRegister = false">
+            <button class="primary" type="button" :disabled="isAuthBusy" @click="handleRegister">
+              {{ isAuthBusy ? 'Erstellt...' : 'Erstellen' }}
+            </button>
+            <button class="secondary" type="button" :disabled="isAuthBusy" @click="showRegister = false">
               Zurueck
             </button>
           </div>
@@ -406,8 +551,9 @@ function upsertSheet(sheet: SheetRecord) {
           <h1>DnD Sheet Manager</h1>
         </div>
         <div class="topbar-actions">
-          <span>{{ loginUsername || regUsername || 'User' }}</span>
+          <span>{{ currentUsername || 'User' }}</span>
           <button class="secondary" type="button" @click="loadSheets">Neu laden</button>
+          <button class="secondary" type="button" @click="handleLogout">Logout</button>
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 package com.example.survivorio.service;
 
+import com.example.survivorio.entity.AppUser;
 import com.example.survivorio.entity.Character;
 import com.example.survivorio.repository.CharacterRepository;
 import org.springframework.http.HttpStatus;
@@ -18,12 +19,13 @@ public class CharacterService {
         this.repo = repo;
     }
 
-    public List<Character> getAll() {
-        return repo.findAll();
+    public List<Character> getAll(AppUser owner) {
+        return repo.findAllByOwnerOrderByCreatedAtDesc(owner);
     }
 
-    public Character create(Character character) {
+    public Character create(AppUser owner, Character character) {
         character.setId(null);
+        character.setOwner(owner);
         if (character.getCreatedAt() == null || character.getCreatedAt().isBlank()) {
             character.setCreatedAt(Instant.now().toString());
         }
@@ -31,8 +33,8 @@ public class CharacterService {
         return repo.save(character);
     }
 
-    public Character update(Long id, Character data) {
-        Character existing = repo.findById(id)
+    public Character update(AppUser owner, Long id, Character data) {
+        Character existing = repo.findByIdAndOwner(id, owner)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Character not found"));
 
         existing.setName(data.getName());

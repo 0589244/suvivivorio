@@ -11,7 +11,8 @@ type Character = {
   createdAt?: string;
 };
 
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const TOKEN_STORAGE_KEY = "dnd-sheet-token";
 
 const characters = ref<Character[]>([]);
 const loading = ref(false);
@@ -29,7 +30,9 @@ async function loadCharacters() {
   loading.value = true;
   error.value = null;
   try {
-    const res = await fetch(`${API_BASE}/characters`);
+    const res = await fetch(`${API_BASE}/api/characters`, {
+      headers: authHeaders(),
+    });
     if (!res.ok) throw new Error(`GET failed: ${res.status}`);
     characters.value = await res.json();
   } catch (e: any) {
@@ -48,9 +51,9 @@ async function createCharacter() {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/characters`, {
+    const res = await fetch(`${API_BASE}/api/characters`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(form.value),
     });
     if (!res.ok) throw new Error(`POST failed: ${res.status}`);
@@ -64,6 +67,19 @@ async function createCharacter() {
   } catch (e: any) {
     error.value = e?.message ?? "Unknown error";
   }
+}
+
+function authHeaders() {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 onMounted(loadCharacters);
