@@ -727,7 +727,6 @@ function upsertSheet(sheet: SheetRecord) {
             :is-loading="isLoadingSheets"
             :error="loadError"
             @select="openExistingSheet"
-            @remove="deleteSheet"
           />
         </section>
       </main>
@@ -740,6 +739,9 @@ function upsertSheet(sheet: SheetRecord) {
           <div class="sheet-actions">
             <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
             <span v-if="saveError" class="error-msg">{{ saveError }}</span>
+            <button class="primary dark" type="submit" :disabled="isSaving || isDeleting">
+              {{ isSaving ? 'Speichert...' : 'Speichern' }}
+            </button>
             <button
               v-if="activeSheet.id"
               class="danger dark"
@@ -748,9 +750,6 @@ function upsertSheet(sheet: SheetRecord) {
               @click="deleteSheet(activeSheet)"
             >
               {{ isDeleting ? 'Loescht...' : 'Loeschen' }}
-            </button>
-            <button class="primary dark" type="submit" :disabled="isSaving || isDeleting">
-              {{ isSaving ? 'Speichert...' : 'Speichern' }}
             </button>
             <button class="secondary dark" type="button" @click="closeSheetEditor">
               Schliessen
@@ -1049,7 +1048,8 @@ button:disabled {
 }
 
 .primary,
-.secondary {
+.secondary,
+.danger {
   min-height: 38px;
   padding: 9px 14px;
 }

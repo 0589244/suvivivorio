@@ -9,7 +9,6 @@ defineProps<{
 
 const emit = defineEmits<{
   select: [sheet: SheetRecord]
-  remove: [sheet: SheetRecord]
 }>()
 
 function formatDate(value?: string) {
@@ -34,28 +33,19 @@ function formatDate(value?: string) {
       Noch keine Eintraege. Erstelle links einen Charakter oder ein Monster.
     </p>
 
-    <article
+    <button
       v-for="entry in entries"
       :key="`${entry.sheetType}-${entry.id ?? entry.name}`"
       class="sheet-card"
+      type="button"
+      @click="emit('select', entry)"
     >
-      <button class="sheet-card-main" type="button" @click="emit('select', entry)">
-        <span class="type-tag" :data-type="entry.sheetType">
-          {{ entry.sheetType === 'character' ? 'Charakter' : 'Monster' }}
-        </span>
-        <strong>{{ entry.name || 'Unbenanntes Sheet' }}</strong>
-        <small>{{ formatDate(entry.createdAt) }}</small>
-      </button>
-
-      <button
-        class="sheet-delete"
-        type="button"
-        :aria-label="`${entry.name || 'Unbenanntes Sheet'} loeschen`"
-        @click="emit('remove', entry)"
-      >
-        Loeschen
-      </button>
-    </article>
+      <span class="type-tag" :data-type="entry.sheetType">
+        {{ entry.sheetType === 'character' ? 'Charakter' : 'Monster' }}
+      </span>
+      <strong>{{ entry.name || 'Unbenanntes Sheet' }}</strong>
+      <small>{{ formatDate(entry.createdAt) }}</small>
+    </button>
   </div>
 </template>
 
@@ -79,35 +69,19 @@ function formatDate(value?: string) {
 
 .sheet-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: stretch;
+  gap: 4px;
   width: 100%;
+  padding: 13px 14px;
   border: 1px solid rgba(244, 223, 178, 0.2);
   border-radius: 8px;
   background: rgba(255, 250, 238, 0.92);
   color: #18110c;
-  overflow: hidden;
+  text-align: left;
 }
 
 .sheet-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
-}
-
-.sheet-card-main {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 13px 14px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-}
-
-.sheet-card-main:hover {
-  background: rgba(125, 85, 35, 0.08);
 }
 
 .sheet-card strong {
@@ -134,21 +108,5 @@ function formatDate(value?: string) {
 
 .type-tag[data-type='monster'] {
   background: #6c2d23;
-}
-
-.sheet-delete {
-  align-self: stretch;
-  min-width: 88px;
-  padding: 0 12px;
-  border: 0;
-  border-left: 1px solid rgba(92, 42, 28, 0.18);
-  background: #7d1f16;
-  color: #fff7e8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.sheet-delete:hover {
-  background: #9b2b20;
 }
 </style>
