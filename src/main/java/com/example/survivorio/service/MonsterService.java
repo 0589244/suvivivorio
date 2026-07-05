@@ -60,4 +60,11 @@ public class MonsterService {
 
         return repo.save(existing);
     }
+
+    public void delete(AppUser owner, Long id) {
+        Monster existing = repo.findByIdAndOwner(id, owner)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Monster not found"));
+
+        repo.delete(existing);
+    }
 }

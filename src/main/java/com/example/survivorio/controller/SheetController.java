@@ -6,6 +6,7 @@ import com.example.survivorio.entity.Monster;
 import com.example.survivorio.service.AuthService;
 import com.example.survivorio.service.CharacterService;
 import com.example.survivorio.service.MonsterService;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,6 +51,16 @@ public class SheetController {
         return characterService.update(user, id, character);
     }
 
+    @DeleteMapping("/characters/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteCharacter(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long id
+    ) {
+        AppUser user = authService.requireUser(authorizationHeader);
+        characterService.delete(user, id);
+    }
+
     @GetMapping("/monsters")
     public List<Monster> getMonsters(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         AppUser user = authService.requireUser(authorizationHeader);
@@ -73,5 +84,15 @@ public class SheetController {
     ) {
         AppUser user = authService.requireUser(authorizationHeader);
         return monsterService.update(user, id, monster);
+    }
+
+    @DeleteMapping("/monsters/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMonster(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long id
+    ) {
+        AppUser user = authService.requireUser(authorizationHeader);
+        monsterService.delete(user, id);
     }
 }

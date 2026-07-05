@@ -91,4 +91,29 @@ class CharacterServiceTest {
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void deleteOnlyRemovesSheetOwnedByCurrentUser() {
+        AppUser owner = new AppUser();
+        Character existing = new Character();
+        existing.setId(7L);
+        existing.setOwner(owner);
+
+        when(repository.findByIdAndOwner(7L, owner)).thenReturn(Optional.of(existing));
+
+        characterService.delete(owner, 7L);
+
+        verify(repository).delete(existing);
+    }
+
+    @Test
+    void deleteReturnsNotFoundWhenSheetDoesNotBelongToUser() {
+        AppUser owner = new AppUser();
+        when(repository.findByIdAndOwner(7L, owner)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> characterService.delete(owner, 7L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
 }

@@ -67,5 +67,12 @@ public class CharacterService {
 
         return repo.save(existing);
     }
+
+    public void delete(AppUser owner, Long id) {
+        Character existing = repo.findByIdAndOwner(id, owner)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Character not found"));
+
+        repo.delete(existing);
+    }
 }
 

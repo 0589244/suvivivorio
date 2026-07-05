@@ -37,6 +37,7 @@ const saveError = ref<string | null>(null)
 const saveSuccess = ref<string | null>(null)
 const isLoadingSheets = ref(false)
 const isSaving = ref(false)
+const isDeleting = ref(false)
 
 const activeSheet = ref<SheetRecord | null>(null)
 const filterType = ref<'all' | SheetType>('all')
@@ -466,6 +467,42 @@ function closeSheetEditor() {
   activeSheet.value = null
 }
 
+async function deleteSheet(sheet: SheetRecord) {
+  if (!sheet.id) {
+    return
+  }
+
+  const label = sheet.sheetType === 'character' ? 'Charakter' : 'Monster'
+  const name = sheet.name || 'Unbenanntes Sheet'
+
+  if (!window.confirm(`${label} "${name}" wirklich loeschen?`)) {
+    return
+  }
+
+  const endpoint = sheet.sheetType === 'character' ? 'characters' : 'monsters'
+  isDeleting.value = true
+  saveError.value = null
+  saveSuccess.value = null
+  loadError.value = null
+
+  try {
+    await apiFetch<null>(`/api/${endpoint}/${sheet.id}`, { method: 'DELETE' })
+    sheets.value = sheets.value.filter(
+      (entry) => !(entry.sheetType === sheet.sheetType && entry.id === sheet.id),
+    )
+
+    if (activeSheet.value?.sheetType === sheet.sheetType && activeSheet.value.id === sheet.id) {
+      activeSheet.value = null
+    }
+  } catch (error) {
+    console.error(error)
+    saveError.value = error instanceof Error ? error.message : 'Fehler beim Loeschen'
+    loadError.value = saveError.value
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 async function saveActiveSheet() {
   if (!activeSheet.value) {
     return
@@ -690,6 +727,7 @@ function upsertSheet(sheet: SheetRecord) {
             :is-loading="isLoadingSheets"
             :error="loadError"
             @select="openExistingSheet"
+            @remove="deleteSheet"
           />
         </section>
       </main>
@@ -702,7 +740,16 @@ function upsertSheet(sheet: SheetRecord) {
           <div class="sheet-actions">
             <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
             <span v-if="saveError" class="error-msg">{{ saveError }}</span>
-            <button class="primary dark" type="submit" :disabled="isSaving">
+            <button
+              v-if="activeSheet.id"
+              class="danger dark"
+              type="button"
+              :disabled="isSaving || isDeleting"
+              @click="deleteSheet(activeSheet)"
+            >
+              {{ isDeleting ? 'Loescht...' : 'Loeschen' }}
+            </button>
+            <button class="primary dark" type="submit" :disabled="isSaving || isDeleting">
               {{ isSaving ? 'Speichert...' : 'Speichern' }}
             </button>
             <button class="secondary dark" type="button" @click="closeSheetEditor">
@@ -1222,6 +1269,16 @@ button:disabled {
   border-color: #111;
   background: #fffaf0;
   color: #111;
+}
+
+.danger.dark {
+  border-color: #7d1f16;
+  background: #7d1f16;
+  color: #fffaf0;
+}
+
+.danger.dark:hover {
+  background: #9b2b20;
 }
 
 .sheet-grid {

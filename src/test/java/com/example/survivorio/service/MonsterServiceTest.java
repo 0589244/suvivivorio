@@ -88,4 +88,29 @@ class MonsterServiceTest {
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    @Test
+    void deleteOnlyRemovesMonsterOwnedByCurrentUser() {
+        AppUser owner = new AppUser();
+        Monster existing = new Monster();
+        existing.setId(5L);
+        existing.setOwner(owner);
+
+        when(repository.findByIdAndOwner(5L, owner)).thenReturn(Optional.of(existing));
+
+        monsterService.delete(owner, 5L);
+
+        verify(repository).delete(existing);
+    }
+
+    @Test
+    void deleteReturnsNotFoundWhenMonsterDoesNotBelongToUser() {
+        AppUser owner = new AppUser();
+        when(repository.findByIdAndOwner(5L, owner)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> monsterService.delete(owner, 5L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
 }

@@ -72,7 +72,7 @@ describe('SheetList', () => {
     const cards = wrapper.findAll('.sheet-card')
     expect(cards).toHaveLength(2)
 
-    const secondCard = cards[1]
+    const secondCard = wrapper.findAll('.sheet-card-main')[1]
     if (!secondCard) {
       throw new Error('Expected a second sheet card')
     }
@@ -80,6 +80,25 @@ describe('SheetList', () => {
     await secondCard.trigger('click')
 
     expect(wrapper.emitted('select')).toEqual([[entries[1]]])
+  })
+
+  it('emits the selected sheet for deletion', async () => {
+    const wrapper = mount(SheetList, {
+      props: {
+        entries,
+        isLoading: false,
+        error: null,
+      },
+    })
+
+    const firstDeleteButton = wrapper.findAll('.sheet-delete')[0]
+    if (!firstDeleteButton) {
+      throw new Error('Expected a delete button')
+    }
+
+    await firstDeleteButton.trigger('click')
+
+    expect(wrapper.emitted('remove')).toEqual([[entries[0]]])
   })
 
   it('shows an empty state when no sheets exist yet', () => {
