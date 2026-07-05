@@ -1,15 +1,17 @@
 package com.example.survivorio.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "characters")
 public class Character {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String name;
     private String ancestry;
     private String className;
@@ -30,24 +32,72 @@ public class Character {
     private String alignment;
     private String background;
     private String deity;
-
-    @Column(length = 2000)
+    private String talentsSpells;
     private String attacks;
-    @Column(length = 4000)
-    private String talents;
-    @Column(length = 4000)
-    private String spells;
-    @Column(length = 6000)
     private String gear;
-    @Column(length = 6000)
-    private String notes;
-
+    private int gp;
+    private int sp;
+    private int cp;
 
     private String createdAt;
 
-    public Character() {}
+    public Character() {
+    }
 
-    // Getter/Setter
+    public Character(
+            Long id,
+            String name,
+            String ancestry,
+            String className,
+            int level,
+            int xp,
+            int str,
+            int dex,
+            int con,
+            int intel,
+            int wis,
+            int cha,
+            int hp,
+            int ac,
+            String title,
+            String alignment,
+            String background,
+            String deity,
+            String talentsSpells,
+            String attacks,
+            String gear,
+            int gp,
+            int sp,
+            int cp,
+            String createdAt
+    ) {
+        this.id = id;
+        this.name = name;
+        this.ancestry = ancestry;
+        this.className = className;
+        this.level = level;
+        this.xp = xp;
+        this.str = str;
+        this.dex = dex;
+        this.con = con;
+        this.intel = intel;
+        this.wis = wis;
+        this.cha = cha;
+        this.hp = hp;
+        this.ac = ac;
+        this.title = title;
+        this.alignment = alignment;
+        this.background = background;
+        this.deity = deity;
+        this.talentsSpells = talentsSpells;
+        this.attacks = attacks;
+        this.gear = gear;
+        this.gp = gp;
+        this.sp = sp;
+        this.cp = cp;
+        this.createdAt = createdAt;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -102,21 +152,24 @@ public class Character {
     public String getDeity() { return deity; }
     public void setDeity(String deity) { this.deity = deity; }
 
-    public String getCreatedAt() { return createdAt; }
-    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+    public String getTalentsSpells() { return talentsSpells; }
+    public void setTalentsSpells(String talentsSpells) { this.talentsSpells = talentsSpells; }
 
     public String getAttacks() { return attacks; }
     public void setAttacks(String attacks) { this.attacks = attacks; }
 
-    public String getTalents() { return talents; }
-    public void setTalents(String talents) { this.talents = talents; }
-
-    public String getSpells() { return spells; }
-    public void setSpells(String spells) { this.spells = spells; }
-
     public String getGear() { return gear; }
     public void setGear(String gear) { this.gear = gear; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
+    public int getGp() { return gp; }
+    public void setGp(int gp) { this.gp = gp; }
+
+    public int getSp() { return sp; }
+    public void setSp(int sp) { this.sp = sp; }
+
+    public int getCp() { return cp; }
+    public void setCp(int cp) { this.cp = cp; }
+
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 }

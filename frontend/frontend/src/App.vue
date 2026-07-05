@@ -1,82 +1,15 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+import SheetList from './components/SheetList.vue'
+import type { CharacterSheet, MonsterSheet, SheetRecord, SheetType } from './types/sheets'
 
-type SheetType = 'character' | 'monster'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-
-// was wir im Frontend anzeigen
-type SheetEntry = {
-  id: number
-  type: SheetType
-  name: string
-  createdAt: string // ISO-Datum als String
-}
-
-// wie die Daten ungefähr vom Backend kommen
-type CharacterResponse = {
-  id: number
-  name: string
-  createdAt: string
-  // alle anderen Felder vom Character-Entity sind hier egal
-}
-
-type MonsterResponse = {
-  id: number
-  name: string
-  createdAt: string
-  // andere Monster-Felder sind hier egal
-}
-
-type CharacterCreate = {
-  name: string
-  createdAt?: string
-}
-
-type MonsterCreate = {
-  name: string
-  createdAt?: string
-}
-
-const showCreate = ref<null | SheetType>(null)
-
-const newCharacter = ref<CharacterCreate>({ name: '' })
-const newMonster = ref<MonsterCreate>({ name: '' })
-
-const createError = ref<string | null>(null)
-const isCreating = ref(false)
-
-// 🔹 Lokales Backend – für Render später ändern!
-const BACKEND_URL = 'http://localhost:8080'
-
-async function postCharacter(payload: CharacterCreate) {
-  const res = await fetch(`${BACKEND_URL}/api/characters`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw new Error(`POST /characters HTTP ${res.status}`)
-  return res.json()
-}
-
-async function postMonster(payload: MonsterCreate) {
-  const res = await fetch(`${BACKEND_URL}/api/monsters`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  if (!res.ok) throw new Error(`POST /monsters HTTP ${res.status}`)
-  return res.json()
-}
-
-// --- Auth-Status (vorerst nur im Frontend) ---
 const isLoggedIn = ref(false)
-
-// --- Login-Form ---
 const loginUsername = ref('')
 const loginPassword = ref('')
 const loginError = ref<string | null>(null)
 
-// --- Register-Form ---
 const showRegister = ref(false)
 const regUsername = ref('')
 const regPassword = ref('')
@@ -84,20 +17,14 @@ const regPasswordRepeat = ref('')
 const regError = ref<string | null>(null)
 const regSuccess = ref<string | null>(null)
 
-// --- Sheets (Charaktere & Monster) ---
-const sheets = ref<SheetEntry[]>([])
+const sheets = ref<SheetRecord[]>([])
 const loadError = ref<string | null>(null)
+const saveError = ref<string | null>(null)
+const saveSuccess = ref<string | null>(null)
 const isLoadingSheets = ref(false)
+const isSaving = ref(false)
 
-// --- Editor Panel (ausgewähltes Sheet) ---
-const selected = ref<{ type: SheetType; id: number } | null>(null)
-const selectedCharacter = ref<any | null>(null)
-const selectedMonster = ref<any | null>(null)
-
-const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
-let saveTimer: number | null = null
-
-// Filter & Sortierung
+const activeSheet = ref<SheetRecord | null>(null)
 const filterType = ref<'all' | SheetType>('all')
 const sortKey = ref<'createdAt' | 'name'>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -106,133 +33,170 @@ const filteredAndSortedSheets = computed(() => {
   let list = [...sheets.value]
 
   if (filterType.value !== 'all') {
-    list = list.filter((s) => s.type === filterType.value)
+    list = list.filter((sheet) => sheet.sheetType === filterType.value)
   }
 
   list.sort((a, b) => {
-    let vA = a[sortKey.value]
-    let vB = b[sortKey.value]
+    const aValue = sortKey.value === 'name' ? a.name : a.createdAt || ''
+    const bValue = sortKey.value === 'name' ? b.name : b.createdAt || ''
 
     if (sortKey.value === 'createdAt') {
-      const tA = new Date(vA).getTime()
-      const tB = new Date(vB).getTime()
-      return sortDir.value === 'asc' ? tA - tB : tB - tA
-    } else {
-      const cmp = vA.localeCompare(vB)
-      return sortDir.value === 'asc' ? cmp : -cmp
+      const aTime = new Date(aValue).getTime() || 0
+      const bTime = new Date(bValue).getTime() || 0
+      return sortDir.value === 'asc' ? aTime - bTime : bTime - aTime
     }
+
+    const compare = aValue.localeCompare(bValue)
+    return sortDir.value === 'asc' ? compare : -compare
   })
 
   return list
 })
 
-// 🔹 Sheets vom Backend laden
+function emptyCharacter(): CharacterSheet {
+  return {
+    sheetType: 'character',
+    name: '',
+    ancestry: '',
+    className: '',
+    level: 1,
+    xp: 0,
+    str: 10,
+    dex: 10,
+    con: 10,
+    intel: 10,
+    wis: 10,
+    cha: 10,
+    hp: 10,
+    ac: 10,
+    title: '',
+    alignment: '',
+    background: '',
+    deity: '',
+    talentsSpells: '',
+    attacks: '',
+    gear: '',
+    gp: 0,
+    sp: 0,
+    cp: 0,
+  }
+}
+
+function emptyMonster(): MonsterSheet {
+  return {
+    sheetType: 'monster',
+    name: '',
+    type: '',
+    armorClass: 10,
+    hitPoints: 10,
+    challenge: '',
+    notes: '',
+    str: 10,
+    dex: 10,
+    con: 10,
+    intel: 10,
+    wis: 10,
+    cha: 10,
+    attacks: '',
+    gear: '',
+    gp: 0,
+    sp: 0,
+    cp: 0,
+  }
+}
+
+function normalizeCharacter(data: Partial<CharacterSheet>): CharacterSheet {
+  return {
+    ...emptyCharacter(),
+    ...data,
+    sheetType: 'character',
+    str: numberOrDefault(data.str, 10),
+    dex: numberOrDefault(data.dex, 10),
+    con: numberOrDefault(data.con, 10),
+    intel: numberOrDefault(data.intel, 10),
+    wis: numberOrDefault(data.wis, 10),
+    cha: numberOrDefault(data.cha, 10),
+    hp: numberOrDefault(data.hp, 10),
+    ac: numberOrDefault(data.ac, 10),
+    level: numberOrDefault(data.level, 1),
+    xp: numberOrDefault(data.xp, 0),
+    gp: numberOrDefault(data.gp, 0),
+    sp: numberOrDefault(data.sp, 0),
+    cp: numberOrDefault(data.cp, 0),
+  }
+}
+
+function normalizeMonster(data: Partial<MonsterSheet>): MonsterSheet {
+  return {
+    ...emptyMonster(),
+    ...data,
+    sheetType: 'monster',
+    str: numberOrDefault(data.str, 10),
+    dex: numberOrDefault(data.dex, 10),
+    con: numberOrDefault(data.con, 10),
+    intel: numberOrDefault(data.intel, 10),
+    wis: numberOrDefault(data.wis, 10),
+    cha: numberOrDefault(data.cha, 10),
+    armorClass: numberOrDefault(data.armorClass, 10),
+    hitPoints: numberOrDefault(data.hitPoints, 10),
+    gp: numberOrDefault(data.gp, 0),
+    sp: numberOrDefault(data.sp, 0),
+    cp: numberOrDefault(data.cp, 0),
+  }
+}
+
+function cloneSheet(sheet: SheetRecord): SheetRecord {
+  return JSON.parse(JSON.stringify(sheet))
+}
+
+function numberOrDefault(value: unknown, fallback: number) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
 async function loadSheets() {
   isLoadingSheets.value = true
   loadError.value = null
 
   try {
-    // Characters holen
-    const charRes = await fetch(`${BACKEND_URL}/api/characters`)
-    if (!charRes.ok) throw new Error(`Characters HTTP ${charRes.status}`)
-    const chars: CharacterResponse[] = await charRes.json()
+    const [characterResponse, monsterResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/characters`),
+      fetch(`${API_BASE_URL}/api/monsters`),
+    ])
 
-    // Monster holen
-    const monRes = await fetch(`${BACKEND_URL}/api/monsters`)
-    if (!monRes.ok) throw new Error(`Monsters HTTP ${monRes.status}`)
-    const mons: MonsterResponse[] = await monRes.json()
+    if (!characterResponse.ok) {
+      throw new Error(`Characters HTTP ${characterResponse.status}`)
+    }
+    if (!monsterResponse.ok) {
+      throw new Error(`Monsters HTTP ${monsterResponse.status}`)
+    }
 
-    // In gemeinsame Liste (für rechte Seite) mappen
-    const charEntries: SheetEntry[] = chars.map((c) => ({
-      id: c.id,
-      name: c.name,
-      type: 'character',
-      createdAt: c.createdAt,
-    }))
+    const characters = (await characterResponse.json()) as Partial<CharacterSheet>[]
+    const monsters = (await monsterResponse.json()) as Partial<MonsterSheet>[]
 
-    const monEntries: SheetEntry[] = mons.map((m) => ({
-      id: m.id,
-      name: m.name,
-      type: 'monster',
-      createdAt: m.createdAt,
-    }))
-
-    sheets.value = [...charEntries, ...monEntries]
-  } catch (err: any) {
-    console.error(err)
-    loadError.value = err.message ?? 'Fehler beim Laden der Sheets'
+    sheets.value = [
+      ...characters.map((character) => normalizeCharacter(character)),
+      ...monsters.map((monster) => normalizeMonster(monster)),
+    ]
+  } catch (error) {
+    console.error(error)
+    loadError.value =
+      error instanceof Error ? error.message : 'Fehler beim Laden der Sheets'
   } finally {
     isLoadingSheets.value = false
   }
 }
 
-async function openSheet(type: SheetType, id: number) {
-  selected.value = { type, id }
-  saveStatus.value = 'idle'
-
-  try {
-    if (type === 'character') {
-      const res = await fetch(`${BACKEND_URL}/api/characters/${id}`)
-      if (!res.ok) throw new Error(`GET character ${id} HTTP ${res.status}`)
-      selectedCharacter.value = await res.json()
-      selectedMonster.value = null
-    } else {
-      const res = await fetch(`${BACKEND_URL}/api/monsters/${id}`)
-      if (!res.ok) throw new Error(`GET monster ${id} HTTP ${res.status}`)
-      selectedMonster.value = await res.json()
-      selectedCharacter.value = null
-    }
-  } catch (e) {
-    console.error(e)
-  }
-}
-
-function scheduleSave(patch: Record<string, any>) {
-  const sel = selected.value
-  if (!sel) return
-
-  saveStatus.value = 'saving'
-
-  if (saveTimer) window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(async () => {
-    try {
-      const url =
-        sel.type === 'character'
-          ? `${BACKEND_URL}/api/characters/${sel.id}`
-          : `${BACKEND_URL}/api/monsters/${sel.id}`
-
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) throw new Error(`PATCH HTTP ${res.status}`)
-
-      const updated = await res.json()
-      if (sel.type === 'character') selectedCharacter.value = updated
-      else selectedMonster.value = updated
-
-      saveStatus.value = 'saved'
-      await loadSheets()
-    } catch (e) {
-      console.error(e)
-      saveStatus.value = 'error'
-    }
-  }, 600)
-}
-
-// --- Auth-Logik (noch ohne echtes Backend) ---
 function handleLogin() {
   loginError.value = null
+
   if (!loginUsername.value || !loginPassword.value) {
     loginError.value = 'Bitte Username und Passwort eingeben.'
     return
   }
-  // Fake-Login
+
   isLoggedIn.value = true
   loginPassword.value = ''
-
-  // 🔹 Nach Login sofort Sheets vom Backend laden
   loadSheets()
 }
 
@@ -241,622 +205,419 @@ function handleRegister() {
   regSuccess.value = null
 
   if (!regUsername.value || !regPassword.value || !regPasswordRepeat.value) {
-    regError.value = 'Bitte alle Felder ausfüllen.'
-    return
-  }
-  if (regPassword.value !== regPasswordRepeat.value) {
-    regError.value = 'Passwörter stimmen nicht überein.'
+    regError.value = 'Bitte alle Felder ausfuellen.'
     return
   }
 
-  // hier später: POST ans Backend
-  regSuccess.value = 'Registrierung erfolgreich! Du kannst dich jetzt einloggen.'
+  if (regPassword.value !== regPasswordRepeat.value) {
+    regError.value = 'Passwoerter stimmen nicht ueberein.'
+    return
+  }
+
+  loginUsername.value = regUsername.value
+  regSuccess.value = 'Account lokal vorbereitet. Du kannst dich jetzt einloggen.'
   regPassword.value = ''
   regPasswordRepeat.value = ''
 }
 
-function createCharacter() {
-  showCreate.value = 'character'
-  newCharacter.value = { name: '' }
-  createError.value = null
+function openNewCharacter() {
+  saveError.value = null
+  saveSuccess.value = null
+  activeSheet.value = emptyCharacter()
 }
 
-function createMonster() {
-  showCreate.value = 'monster'
-  newMonster.value = { name: '' }
-  createError.value = null
+function openNewMonster() {
+  saveError.value = null
+  saveSuccess.value = null
+  activeSheet.value = emptyMonster()
 }
 
-async function submitCreate() {
-  createError.value = null
+function openExistingSheet(sheet: SheetRecord) {
+  saveError.value = null
+  saveSuccess.value = null
+  activeSheet.value = cloneSheet(sheet)
+}
+
+function closeSheetEditor() {
+  activeSheet.value = null
+}
+
+async function saveActiveSheet() {
+  if (!activeSheet.value) {
+    return
+  }
+
+  if (!activeSheet.value.name.trim()) {
+    saveError.value = 'Bitte mindestens einen Namen eintragen.'
+    return
+  }
+
+  isSaving.value = true
+  saveError.value = null
+  saveSuccess.value = null
+
+  const sheet = activeSheet.value
+  const endpoint = sheet.sheetType === 'character' ? 'characters' : 'monsters'
+  const method = sheet.id ? 'PUT' : 'POST'
+  const url = `${API_BASE_URL}/api/${endpoint}${sheet.id ? `/${sheet.id}` : ''}`
+  const payload = toBackendPayload(sheet)
 
   try {
-    isCreating.value = true
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
 
-    if (showCreate.value === 'character') {
-      const name = newCharacter.value.name.trim()
-      if (!name) {
-        createError.value = 'Name darf nicht leer sein.'
-        return
-      }
-
-      const created = await postCharacter({ name })
-      showCreate.value = null
-      await loadSheets()
-      await openSheet('character', created.id)
-      return
+    if (!response.ok) {
+      throw new Error(`Speichern fehlgeschlagen: HTTP ${response.status}`)
     }
 
-    if (showCreate.value === 'monster') {
-      const name = newMonster.value.name.trim()
-      if (!name) {
-        createError.value = 'Name darf nicht leer sein.'
-        return
-      }
+    const savedData = await response.json()
+    const savedSheet =
+      sheet.sheetType === 'character'
+        ? normalizeCharacter(savedData)
+        : normalizeMonster(savedData)
 
-      const created = await postMonster({ name })
-      showCreate.value = null
-      await loadSheets()
-      await openSheet('monster', created.id)
-      return
-    }
-  } catch (err: any) {
-    console.error(err)
-    createError.value = err.message ?? 'Fehler beim Erstellen'
+    upsertSheet(savedSheet)
+    activeSheet.value = cloneSheet(savedSheet)
+    saveSuccess.value = 'Gespeichert.'
+  } catch (error) {
+    console.error(error)
+    saveError.value =
+      error instanceof Error ? error.message : 'Fehler beim Speichern'
   } finally {
-    isCreating.value = false
+    isSaving.value = false
   }
 }
 
-function closeCreate() {
-  showCreate.value = null
-  createError.value = null
-  // optional: Felder resetten
-  newCharacter.value = { name: '' }
-  newMonster.value = { name: '' }
+function toBackendPayload(sheet: SheetRecord) {
+  const { sheetType, ...payload } = sheet
+  const numberFields = [
+    'level',
+    'xp',
+    'str',
+    'dex',
+    'con',
+    'intel',
+    'wis',
+    'cha',
+    'hp',
+    'ac',
+    'armorClass',
+    'hitPoints',
+    'gp',
+    'sp',
+    'cp',
+  ]
+
+  for (const field of numberFields) {
+    if (field in payload) {
+      const record = payload as Record<string, unknown>
+      record[field] = numberOrDefault(record[field], field === 'level' ? 1 : 0)
+    }
+  }
+
+  return payload
 }
 
+function upsertSheet(sheet: SheetRecord) {
+  const index = sheets.value.findIndex(
+    (entry) => entry.sheetType === sheet.sheetType && entry.id === sheet.id,
+  )
+
+  if (index >= 0) {
+    sheets.value[index] = sheet
+    return
+  }
+
+  sheets.value = [sheet, ...sheets.value]
+}
 </script>
 
 <template>
   <div class="app-root">
-    <!-- Hintergrund (später auch für Darkmode nutzbar) -->
-    <div class="bg-gradient"></div>
-
-    <div class="app-shell" v-if="!isLoggedIn">
-      <!-- LOGIN / REGISTER VIEW -->
+    <section v-if="!isLoggedIn" class="auth-screen">
+      <div class="auth-backdrop"></div>
       <div class="auth-card">
-        <h1 class="logo-title">DnD Sheet Manager</h1>
+        <p class="kicker">Campaign sheets</p>
+        <h1>DnD Sheet Manager</h1>
 
         <div v-if="!showRegister" class="auth-panel">
-          <h2 class="auth-heading">Sign in</h2>
-          <div class="field">
-            <label>Username</label>
-            <input v-model="loginUsername" type="text" placeholder="Username" />
-          </div>
-          <div class="field">
-            <label>Password</label>
-            <input v-model="loginPassword" type="password" placeholder="Password" />
-          </div>
+          <label>
+            Username
+            <input v-model="loginUsername" type="text" autocomplete="username" />
+          </label>
+
+          <label>
+            Password
+            <input v-model="loginPassword" type="password" autocomplete="current-password" />
+          </label>
+
           <p v-if="loginError" class="error-msg">{{ loginError }}</p>
 
           <div class="auth-actions">
-            <button class="btn primary" @click="handleLogin">Sign in</button>
-            <button class="btn ghost" @click="showRegister = true">Register</button>
+            <button class="primary" type="button" @click="handleLogin">Einloggen</button>
+            <button class="secondary" type="button" @click="showRegister = true">
+              Registrieren
+            </button>
           </div>
         </div>
 
         <div v-else class="auth-panel">
-          <h2 class="auth-heading">Register</h2>
-          <div class="field">
-            <label>Username</label>
-            <input v-model="regUsername" type="text" placeholder="Wunschname" />
-          </div>
-          <div class="field">
-            <label>Password</label>
-            <input v-model="regPassword" type="password" placeholder="Passwort" />
-          </div>
-          <div class="field">
-            <label>Repeat Password</label>
+          <label>
+            Username
+            <input v-model="regUsername" type="text" autocomplete="username" />
+          </label>
+
+          <label>
+            Password
+            <input v-model="regPassword" type="password" autocomplete="new-password" />
+          </label>
+
+          <label>
+            Repeat password
             <input
               v-model="regPasswordRepeat"
               type="password"
-              placeholder="Passwort wiederholen"
+              autocomplete="new-password"
             />
-          </div>
+          </label>
 
           <p v-if="regError" class="error-msg">{{ regError }}</p>
           <p v-if="regSuccess" class="success-msg">{{ regSuccess }}</p>
 
           <div class="auth-actions">
-            <button class="btn primary" @click="handleRegister">Create account</button>
-            <button class="btn ghost" @click="showRegister = false">Back to login</button>
+            <button class="primary" type="button" @click="handleRegister">Erstellen</button>
+            <button class="secondary" type="button" @click="showRegister = false">
+              Zurueck
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- MAIN APP (nach Login) -->
-    <div v-else class="main-layout">
-      <header class="main-header">
-        <h1>DnD Sheet Manager</h1>
-        <div class="header-right">
-          <!-- Darkmode-Toggle kommt hier später hin -->
-          <span class="user-pill">Angemeldet als {{ loginUsername || regUsername || 'User' }}</span>
+    <section v-else class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="kicker">Dungeon table</p>
+          <h1>DnD Sheet Manager</h1>
+        </div>
+        <div class="topbar-actions">
+          <span>{{ loginUsername || regUsername || 'User' }}</span>
+          <button class="secondary" type="button" @click="loadSheets">Neu laden</button>
         </div>
       </header>
 
-      <div class="main-grid">
-        <!-- Linke Seite: große Kacheln -->
-        <section class="left-panel">
-          <div class="big-card" @click="createCharacter">
-            <h2>Charakter erstellen +</h2>
-            <p>Lege ein neues Character-Sheet an.</p>
-          </div>
+      <main class="dashboard">
+        <aside class="actions-panel">
+          <button class="create-tile" type="button" @click="openNewCharacter">
+            <strong>Charakter erstellen</strong>
+            <span>Spielerwerte, Ausruestung und Notizen speichern.</span>
+          </button>
 
-          <div class="big-card" @click="createMonster">
-            <h2>Monster erstellen +</h2>
-            <p>Erstelle ein Monster-Sheet für deine Kampagnen.</p>
-          </div>
-        </section>
+          <button class="create-tile monster" type="button" @click="openNewMonster">
+            <strong>Monster erstellen</strong>
+            <span>Stats, Angriffe und Loot fuer den Dungeonmaster.</span>
+          </button>
+        </aside>
 
-        <!-- Rechte Seite: Liste der vorhandenen Sheets -->
-        <section class="right-panel">
-          <div class="list-header">
+        <section class="list-panel">
+          <div class="list-toolbar">
             <h2>Deine Sheets</h2>
             <div class="list-controls">
-              <select v-model="filterType">
+              <select v-model="filterType" aria-label="Filter">
                 <option value="all">Alle</option>
-                <option value="character">Nur Charaktere</option>
-                <option value="monster">Nur Monster</option>
+                <option value="character">Charaktere</option>
+                <option value="monster">Monster</option>
               </select>
 
-              <select v-model="sortKey">
-                <option value="createdAt">Sortieren nach: Erstelldatum</option>
-                <option value="name">Sortieren nach: Name</option>
+              <select v-model="sortKey" aria-label="Sortierung">
+                <option value="createdAt">Datum</option>
+                <option value="name">Name</option>
               </select>
 
-              <button class="btn tiny" @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'">
-                {{ sortDir === 'asc' ? '↑' : '↓' }}
+              <button
+                class="icon-button"
+                type="button"
+                :title="sortDir === 'asc' ? 'Aufsteigend' : 'Absteigend'"
+                @click="sortDir = sortDir === 'asc' ? 'desc' : 'asc'"
+              >
+                {{ sortDir === 'asc' ? 'A-Z' : 'Z-A' }}
               </button>
             </div>
           </div>
-            <!-- EDITOR PANEL -->
-            <div v-if="selected" class="editor-panel">
-              <div class="editor-header">
-                <div class="editor-title">
-                  {{ selected.type === 'character' ? 'Held' : 'Monster' }}
-                </div>
 
-                <div class="editor-status">
-                  <span v-if="saveStatus === 'idle'"> </span>
-                  <span v-else-if="saveStatus === 'saving'">Speichere…</span>
-                  <span v-else-if="saveStatus === 'saved'">Gespeichert ✓</span>
-                  <span v-else>Fehler beim Speichern</span>
-                </div>
-              </div>
-
-              <!-- CHARACTER PANEL (Shadowdark Layout v1) -->
-              <div v-if="selected.type === 'character' && selectedCharacter" class="sd-sheet">
-                <!-- Header -->
-                <div class="sd-head">
-                  <div class="sd-brand">HELD</div>
-
-                  <div class="sd-head-main">
-                    <label class="sd-label">Name</label>
-                    <input
-                      class="sd-input sd-title"
-                      :value="selectedCharacter.name"
-                      @input="(e:any) => { selectedCharacter.name = e.target.value; scheduleSave({ name: selectedCharacter.name }) }"
-                      type="text"
-                      placeholder="Name"
-                    />
-                  </div>
-
-                  <div class="sd-head-meta">
-                    <div class="sd-mini">
-                      <label class="sd-label">Level</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.level"
-                        @input="(e:any) => { selectedCharacter.level = Number(e.target.value); scheduleSave({ level: selectedCharacter.level }) }"
-                        type="number"
-                        min="0"
-                      />
-                    </div>
-                    <div class="sd-mini">
-                      <label class="sd-label">XP</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.xp"
-                        @input="(e:any) => { selectedCharacter.xp = Number(e.target.value); scheduleSave({ xp: selectedCharacter.xp }) }"
-                        type="number"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Body: 3 columns -->
-                <div class="sd-body">
-                  <!-- Left: Stats -->
-                  <div class="sd-col sd-stats">
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">STR</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.str"
-                             @input="(e:any) => { selectedCharacter.str = Number(e.target.value); scheduleSave({ str: selectedCharacter.str }) }"
-                             type="number"
-                      />
-                    </div>
-
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">DEX</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.dex"
-                             @input="(e:any) => { selectedCharacter.dex = Number(e.target.value); scheduleSave({ dex: selectedCharacter.dex }) }"
-                             type="number"
-                      />
-                    </div>
-
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">CON</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.con"
-                             @input="(e:any) => { selectedCharacter.con = Number(e.target.value); scheduleSave({ con: selectedCharacter.con }) }"
-                             type="number"
-                      />
-                    </div>
-
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">INT</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.intel"
-                             @input="(e:any) => { selectedCharacter.intel = Number(e.target.value); scheduleSave({ intel: selectedCharacter.intel }) }"
-                             type="number"
-                      />
-                    </div>
-
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">WIS</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.wis"
-                             @input="(e:any) => { selectedCharacter.wis = Number(e.target.value); scheduleSave({ wis: selectedCharacter.wis }) }"
-                             type="number"
-                      />
-                    </div>
-
-                    <div class="sd-stat">
-                      <div class="sd-stat-name">CHA</div>
-                      <input class="sd-stat-val"
-                             :value="selectedCharacter.cha"
-                             @input="(e:any) => { selectedCharacter.cha = Number(e.target.value); scheduleSave({ cha: selectedCharacter.cha }) }"
-                             type="number"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Middle: Core -->
-                  <div class="sd-col sd-core">
-                    <div class="sd-row">
-                      <div class="sd-field">
-                        <label class="sd-label">Ancestry</label>
-                        <input
-                          class="sd-input"
-                          :value="selectedCharacter.ancestry"
-                          @input="(e:any) => { selectedCharacter.ancestry = e.target.value; scheduleSave({ ancestry: selectedCharacter.ancestry }) }"
-                          type="text"
-                          placeholder="z.B. Human, Elf..."
-                        />
-                      </div>
-
-                      <div class="sd-field">
-                        <label class="sd-label">Class</label>
-                        <input
-                          class="sd-input"
-                          :value="selectedCharacter.className"
-                          @input="(e:any) => { selectedCharacter.className = e.target.value; scheduleSave({ className: selectedCharacter.className }) }"
-                          type="text"
-                          placeholder="z.B. Fighter..."
-                        />
-                      </div>
-                    </div>
-
-                    <div class="sd-row sd-badges">
-                      <div class="sd-badge">
-                        <div class="sd-badge-name">HP</div>
-                        <input
-                          class="sd-badge-val"
-                          :value="selectedCharacter.hp"
-                          @input="(e:any) => { selectedCharacter.hp = Number(e.target.value); scheduleSave({ hp: selectedCharacter.hp }) }"
-                          type="number"
-                          min="0"
-                        />
-                      </div>
-
-                      <div class="sd-badge">
-                        <div class="sd-badge-name">AC</div>
-                        <input
-                          class="sd-badge-val"
-                          :value="selectedCharacter.ac"
-                          @input="(e:any) => { selectedCharacter.ac = Number(e.target.value); scheduleSave({ ac: selectedCharacter.ac }) }"
-                          type="number"
-                          min="0"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Right: Flavour -->
-                  <div class="sd-col sd-flavour">
-                    <div class="sd-field">
-                      <label class="sd-label">Title</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.title"
-                        @input="(e:any) => { selectedCharacter.title = e.target.value; scheduleSave({ title: selectedCharacter.title }) }"
-                        type="text"
-                        placeholder="z.B. The Brave"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Alignment</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.alignment"
-                        @input="(e:any) => { selectedCharacter.alignment = e.target.value; scheduleSave({ alignment: selectedCharacter.alignment }) }"
-                        type="text"
-                        placeholder="z.B. Lawful"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Background</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.background"
-                        @input="(e:any) => { selectedCharacter.background = e.target.value; scheduleSave({ background: selectedCharacter.background }) }"
-                        type="text"
-                        placeholder="z.B. Outcast"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Deity</label>
-                      <input
-                        class="sd-input"
-                        :value="selectedCharacter.deity"
-                        @input="(e:any) => { selectedCharacter.deity = e.target.value; scheduleSave({ deity: selectedCharacter.deity }) }"
-                        type="text"
-                        placeholder="z.B. None"
-                      />
-                    </div>
-                    <div class="sd-field">
-                      <label class="sd-label">Attacks</label>
-                      <textarea
-                        class="sd-textarea"
-                        :value="selectedCharacter.attacks ?? ''"
-                        @input="(e:any) => { selectedCharacter.attacks = e.target.value; scheduleSave({ attacks: selectedCharacter.attacks }) }"
-                        rows="3"
-                        placeholder="Weapon, to hit, damage…"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Talents</label>
-                      <textarea
-                        class="sd-textarea"
-                        :value="selectedCharacter.talents ?? ''"
-                        @input="(e:any) => { selectedCharacter.talents = e.target.value; scheduleSave({ talents: selectedCharacter.talents }) }"
-                        rows="4"
-                        placeholder="Talents / Features…"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Spells</label>
-                      <textarea
-                        class="sd-textarea"
-                        :value="selectedCharacter.spells ?? ''"
-                        @input="(e:any) => { selectedCharacter.spells = e.target.value; scheduleSave({ spells: selectedCharacter.spells }) }"
-                        rows="4"
-                        placeholder="Spells, slots, notes…"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Gear</label>
-                      <textarea
-                        class="sd-textarea"
-                        :value="selectedCharacter.gear ?? ''"
-                        @input="(e:any) => { selectedCharacter.gear = e.target.value; scheduleSave({ gear: selectedCharacter.gear }) }"
-                        rows="5"
-                        placeholder="Inventory / Items…"
-                      />
-                    </div>
-
-                    <div class="sd-field">
-                      <label class="sd-label">Notes</label>
-                      <textarea
-                        class="sd-textarea"
-                        :value="selectedCharacter.notes ?? ''"
-                        @input="(e:any) => { selectedCharacter.notes = e.target.value; scheduleSave({ notes: selectedCharacter.notes }) }"
-                        rows="5"
-                        placeholder="Session notes…"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-              <!-- MONSTER PANEL (minimal) -->
-              <div v-if="selected.type === 'monster' && selectedMonster" class="editor-grid">
-                <div class="editor-field">
-                  <label>Name</label>
-                  <input
-                    :value="selectedMonster.name"
-                    @input="(e:any) => { selectedMonster.name = e.target.value; scheduleSave({ name: selectedMonster.name }) }"
-                    type="text"
-                  />
-                </div>
-
-                <div class="editor-field">
-                  <label>Hit Points</label>
-                  <input
-                    :value="selectedMonster.hitPoints"
-                    @input="(e:any) => { selectedMonster.hitPoints = Number(e.target.value); scheduleSave({ hitPoints: selectedMonster.hitPoints }) }"
-                    type="number"
-                  />
-                </div>
-
-                <div class="editor-field">
-                  <label>Armor Class</label>
-                  <input
-                    :value="selectedMonster.armorClass"
-                    @input="(e:any) => { selectedMonster.armorClass = Number(e.target.value); scheduleSave({ armorClass: selectedMonster.armorClass }) }"
-                    type="number"
-                  />
-                </div>
-                <div class="editor-field" style="grid-column: 1 / -1;">
-                  <label>Attacks</label>
-                  <textarea
-                    class="sd-textarea"
-                    :value="selectedMonster.attacks ?? ''"
-                    @input="(e:any) => { selectedMonster.attacks = e.target.value; scheduleSave({ attacks: selectedMonster.attacks }) }"
-                    rows="3"
-                    placeholder="Attack lines…"
-                  />
-                </div>
-
-                <div class="editor-field" style="grid-column: 1 / -1;">
-                  <label>Talents</label>
-                  <textarea
-                    class="sd-textarea"
-                    :value="selectedMonster.talents ?? ''"
-                    @input="(e:any) => { selectedMonster.talents = e.target.value; scheduleSave({ talents: selectedMonster.talents }) }"
-                    rows="4"
-                    placeholder="Talents / Features…"
-                  />
-                </div>
-
-                <div class="editor-field" style="grid-column: 1 / -1;">
-                  <label>Spells</label>
-                  <textarea
-                    class="sd-textarea"
-                    :value="selectedMonster.spells ?? ''"
-                    @input="(e:any) => { selectedMonster.spells = e.target.value; scheduleSave({ spells: selectedMonster.spells }) }"
-                    rows="4"
-                    placeholder="Spells…"
-                  />
-                </div>
-
-                <div class="editor-field" style="grid-column: 1 / -1;">
-                  <label>Gear</label>
-                  <textarea
-                    class="sd-textarea"
-                    :value="selectedMonster.gear ?? ''"
-                    @input="(e:any) => { selectedMonster.gear = e.target.value; scheduleSave({ gear: selectedMonster.gear }) }"
-                    rows="4"
-                    placeholder="Inventory…"
-                  />
-                </div>
-
-                <div class="editor-field" style="grid-column: 1 / -1;">
-                  <label>Notes</label>
-                  <textarea
-                    class="sd-textarea"
-                    :value="selectedMonster.notes ?? ''"
-                    @input="(e:any) => { selectedMonster.notes = e.target.value; scheduleSave({ notes: selectedMonster.notes }) }"
-                    rows="5"
-                    placeholder="Notes…"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Hint, wenn nichts ausgewählt -->
-            <p v-else class="empty-hint">
-              Klick rechts auf ein Sheet, um es zu bearbeiten.
-            </p>
-
-
-
-            <div class="sheet-list">
-            <p v-if="isLoadingSheets" class="empty-hint">
-              Lade Sheets vom Backend...
-            </p>
-            <p v-else-if="loadError" class="error-msg">
-              {{ loadError }}
-            </p>
-
-            <div
-              v-for="entry in filteredAndSortedSheets"
-              :key="entry.id"
-              class="sheet-card"
-              @click="openSheet(entry.type, entry.id)"
-            >
-              <div class="sheet-type" :data-type="entry.type">
-                {{ entry.type === 'character' ? 'Charakter' : 'Monster' }}
-              </div>
-              <div class="sheet-name">{{ entry.name }}</div>
-              <div class="sheet-meta">
-      <span>
-        Erstellt:
-        {{ new Date(entry.createdAt).toLocaleDateString() }}
-      </span>
-              </div>
-            </div>
-            <p
-              v-if="!isLoadingSheets && !loadError && filteredAndSortedSheets.length === 0"
-              class="empty-hint"
-            >
-              Noch keine Einträge. Erstelle links einen Charakter oder ein Monster.
-            </p>
-          </div>
+          <SheetList
+            :entries="filteredAndSortedSheets"
+            :is-loading="isLoadingSheets"
+            :error="loadError"
+            @select="openExistingSheet"
+          />
         </section>
-      </div>
-    </div>
-  </div>
-  <!-- CREATE MODAL -->
-  <div v-if="showCreate" class="modal-backdrop" @click.self="closeCreate">
-    <div class="modal-card">
-      <h2 style="margin:0 0 10px;">
-        {{ showCreate === 'character' ? 'Charakter erstellen' : 'Monster erstellen' }}
-      </h2>
+      </main>
+    </section>
 
-      <div class="field">
-        <label>Name</label>
+    <div v-if="activeSheet" class="modal-overlay" @click.self="closeSheetEditor">
+      <form class="sheet-window" @submit.prevent="saveActiveSheet">
+        <header class="sheet-header">
+          <h2>{{ activeSheet.sheetType === 'character' ? 'Charakter' : 'Monster' }}</h2>
+          <div class="sheet-actions">
+            <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
+            <span v-if="saveError" class="error-msg">{{ saveError }}</span>
+            <button class="primary dark" type="submit" :disabled="isSaving">
+              {{ isSaving ? 'Speichert...' : 'Speichern' }}
+            </button>
+            <button class="secondary dark" type="button" @click="closeSheetEditor">
+              Schliessen
+            </button>
+          </div>
+        </header>
 
-        <input
-          v-if="showCreate === 'character'"
-          v-model="newCharacter.name"
-          type="text"
-          placeholder="z.B. Okan der Krieger"
-        />
+        <div class="sheet-grid">
+          <section class="stats-column">
+            <label class="stat-box">
+              STR
+              <input v-model.number="activeSheet.str" type="number" />
+            </label>
+            <label class="stat-box">
+              INT
+              <input v-model.number="activeSheet.intel" type="number" />
+            </label>
+            <label class="stat-box">
+              DEX
+              <input v-model.number="activeSheet.dex" type="number" />
+            </label>
+            <label class="stat-box">
+              WIS
+              <input v-model.number="activeSheet.wis" type="number" />
+            </label>
+            <label class="stat-box">
+              CON
+              <input v-model.number="activeSheet.con" type="number" />
+            </label>
+            <label class="stat-box">
+              CHA
+              <input v-model.number="activeSheet.cha" type="number" />
+            </label>
 
-        <input
-          v-else
-          v-model="newMonster.name"
-          type="text"
-          placeholder="z.B. Goblin"
-        />
-      </div>
+            <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
+              HP
+              <input v-model.number="activeSheet.hp" type="number" />
+            </label>
+            <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
+              AC
+              <input v-model.number="activeSheet.ac" type="number" />
+            </label>
 
-      <p v-if="createError" class="error-msg" style="margin-top:8px;">
-        {{ createError }}
-      </p>
+            <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
+              HP
+              <input v-model.number="activeSheet.hitPoints" type="number" />
+            </label>
+            <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
+              AC
+              <input v-model.number="activeSheet.armorClass" type="number" />
+            </label>
 
-      <div class="auth-actions" style="margin-top: 12px;">
-        <button class="btn primary" @click="submitCreate" :disabled="isCreating">
-          {{ isCreating ? 'Speichere...' : 'Speichern (POST)' }}
-        </button>
+            <label class="wide-field attacks">
+              Attacks
+              <textarea v-model="activeSheet.attacks"></textarea>
+            </label>
+          </section>
 
-        <button class="btn ghost" @click="closeCreate" :disabled="isCreating">
-          Abbrechen
-        </button>
-      </div>
+          <section class="identity-column">
+            <label class="wide-field">
+              Name
+              <input v-model="activeSheet.name" type="text" />
+            </label>
+
+            <template v-if="activeSheet.sheetType === 'character'">
+              <label class="wide-field">
+                Ancestry
+                <input v-model="activeSheet.ancestry" type="text" />
+              </label>
+              <label class="wide-field">
+                Class
+                <input v-model="activeSheet.className" type="text" />
+              </label>
+              <div class="two-fields">
+                <label class="wide-field">
+                  Level
+                  <input v-model.number="activeSheet.level" type="number" min="1" />
+                </label>
+                <label class="wide-field">
+                  XP
+                  <input v-model.number="activeSheet.xp" type="number" min="0" />
+                </label>
+              </div>
+              <label class="wide-field">
+                Title
+                <input v-model="activeSheet.title" type="text" />
+              </label>
+              <label class="wide-field">
+                Alignment
+                <input v-model="activeSheet.alignment" type="text" />
+              </label>
+              <label class="wide-field">
+                Background
+                <input v-model="activeSheet.background" type="text" />
+              </label>
+              <label class="wide-field">
+                Deity
+                <input v-model="activeSheet.deity" type="text" />
+              </label>
+            </template>
+
+            <template v-else>
+              <label class="wide-field">
+                Type
+                <input v-model="activeSheet.type" type="text" />
+              </label>
+              <label class="wide-field">
+                Challenge
+                <input v-model="activeSheet.challenge" type="text" />
+              </label>
+              <label class="wide-field monster-notes">
+                Notes
+                <textarea v-model="activeSheet.notes"></textarea>
+              </label>
+            </template>
+          </section>
+
+          <section class="notes-column">
+            <label v-if="activeSheet.sheetType === 'character'" class="wide-field tall">
+              Talents / Spells
+              <textarea v-model="activeSheet.talentsSpells"></textarea>
+            </label>
+            <label v-else class="wide-field tall">
+              Special traits
+              <textarea v-model="activeSheet.notes"></textarea>
+            </label>
+
+            <div class="coin-row">
+              <label>
+                GP
+                <input v-model.number="activeSheet.gp" type="number" min="0" />
+              </label>
+              <label>
+                SP
+                <input v-model.number="activeSheet.sp" type="number" min="0" />
+              </label>
+              <label>
+                CP
+                <input v-model.number="activeSheet.cp" type="number" min="0" />
+              </label>
+            </div>
+
+            <label class="wide-field gear-field">
+              Gear
+              <textarea v-model="activeSheet.gear"></textarea>
+            </label>
+          </section>
+        </div>
+      </form>
     </div>
   </div>
 </template>
@@ -864,210 +625,285 @@ function closeCreate() {
 <style scoped>
 .app-root {
   min-height: 100vh;
+  color: #f7f2e7;
+  background: #151212;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.auth-screen {
   position: relative;
-  color: #f5f5f5;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-.bg-gradient {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at top left, #4b6cb7, #182848);
-  filter: blur(0px);
-  z-index: -1;
-}
-
-.app-shell {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.auth-screen::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background:
+    linear-gradient(90deg, rgba(12, 8, 6, 0.88), rgba(20, 14, 12, 0.48)),
+    url('/dnd-background.avif') center / cover;
+  transform: scale(1.02);
+}
+
+.auth-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 20%, rgba(255, 220, 150, 0.24), transparent 38%);
 }
 
 .auth-card {
-  background: rgba(10, 16, 32, 0.95);
-  border-radius: 16px;
-  padding: 24px 28px 28px;
-  width: 360px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.logo-title {
-  margin: 0 0 18px;
-  text-align: center;
-  font-size: 20px;
-  letter-spacing: 0.06em;
-}
-
-.auth-heading {
-  margin: 0 0 12px;
-  font-size: 18px;
-}
-
-.auth-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.field label {
-  opacity: 0.8;
-}
-
-.field input {
-  padding: 8px 10px;
+  position: relative;
+  width: min(420px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(244, 223, 178, 0.28);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(9, 14, 30, 0.9);
-  color: #f5f5f5;
-  outline: none;
-}
-.field input:focus {
-  border-color: #4ea3ff;
-}
-
-.auth-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.btn {
-  border-radius: 8px;
-  border: none;
-  padding: 8px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.btn.primary {
-  background: #3ea5ff;
-  color: #0b1220;
-}
-.btn.primary:hover {
-  background: #6bb7ff;
-}
-.btn.ghost {
-  background: transparent;
-  color: #f5f5f5;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
-.btn.ghost:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-.btn.tiny {
-  padding: 4px 8px;
-  font-size: 12px;
-}
-
-.error-msg {
-  color: #ff6b81;
-  font-size: 12px;
-}
-.success-msg {
-  color: #8ee58f;
-  font-size: 12px;
-}
-
-/* MAIN LAYOUT */
-
-.main-layout {
-  min-height: 100vh;
-  padding: 16px 20px 24px;
-  display: flex;
-  flex-direction: column;
+  background: rgba(18, 13, 11, 0.86);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(6px);
 }
 
-.main-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+.kicker {
+  margin: 0 0 6px;
+  color: #e6bf75;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
-.main-header h1 {
-  font-size: 22px;
+h1,
+h2 {
   margin: 0;
+  letter-spacing: 0;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
+.auth-card h1 {
+  margin-bottom: 22px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 34px;
+}
+
+.auth-panel,
+.auth-panel label {
+  display: grid;
   gap: 10px;
 }
 
-.user-pill {
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.main-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 3fr);
-  gap: 18px;
-  align-items: flex-start;
-}
-
-.left-panel {
-  display: flex;
-  flex-direction: column;
+.auth-panel {
   gap: 14px;
 }
 
-.big-card {
-  background: rgba(12, 20, 40, 0.95);
-  border-radius: 16px;
-  padding: 18px 18px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
-}
-.big-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
-  border-color: rgba(104, 174, 255, 0.8);
-}
-.big-card h2 {
-  margin: 0 0 6px;
-  font-size: 18px;
-}
-.big-card p {
-  margin: 0;
-  font-size: 13px;
-  opacity: 0.8;
+label {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.right-panel {
-  background: rgba(10, 16, 32, 0.96);
-  border-radius: 16px;
-  padding: 14px 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid rgba(244, 223, 178, 0.35);
+  border-radius: 4px;
+  background: rgba(255, 249, 238, 0.95);
+  color: #14110f;
+  font: inherit;
+  letter-spacing: 0;
+  outline: none;
+}
+
+input,
+select {
+  height: 38px;
+  padding: 8px 10px;
+}
+
+textarea {
+  min-height: 88px;
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #d69a38;
+  box-shadow: 0 0 0 3px rgba(214, 154, 56, 0.22);
+}
+
+.auth-actions,
+.topbar-actions,
+.sheet-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.list-header {
+button {
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.primary,
+.secondary {
+  min-height: 38px;
+  padding: 9px 14px;
+}
+
+.primary {
+  background: #d69a38;
+  color: #130f0b;
+}
+
+.primary:hover {
+  background: #efb44e;
+}
+
+.secondary {
+  border: 1px solid rgba(244, 223, 178, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f7f2e7;
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.error-msg,
+.success-msg {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.error-msg {
+  color: #ff8d8d;
+}
+
+.success-msg {
+  color: #8ee596;
+}
+
+.workspace {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(214, 154, 56, 0.2), transparent 28%),
+    linear-gradient(135deg, #16120f, #27221d 52%, #141211);
+}
+
+.topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 18px;
+  margin: 0 auto 22px;
+  width: min(1180px, 100%);
 }
 
-.list-header h2 {
-  margin: 0;
-  font-size: 16px;
+.topbar h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(28px, 4vw, 46px);
+}
+
+.topbar-actions span {
+  padding: 8px 12px;
+  border: 1px solid rgba(244, 223, 178, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.55fr);
+  gap: 18px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.actions-panel,
+.list-panel {
+  border: 1px solid rgba(244, 223, 178, 0.18);
+  border-radius: 8px;
+  background: rgba(20, 15, 12, 0.78);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.actions-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 16px;
+}
+
+.create-tile {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 18px;
+  border: 1px solid rgba(244, 223, 178, 0.22);
+  border-radius: 8px;
+  background: #f4dfb2;
+  color: #17110d;
+  text-align: left;
+}
+
+.create-tile.monster {
+  background: #dabf85;
+}
+
+.create-tile:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.create-tile strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 21px;
+}
+
+.create-tile span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.list-panel {
+  padding: 16px;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.list-toolbar h2 {
+  font-size: 22px;
 }
 
 .list-controls {
@@ -1075,493 +911,203 @@ function closeCreate() {
   gap: 8px;
   align-items: center;
 }
+
 .list-controls select {
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(5, 10, 24, 0.9);
-  color: #f5f5f5;
+  width: auto;
+  min-width: 116px;
+  background: #fff8e8;
 }
 
-.sheet-list {
-  display: grid;
-  gap: 8px;
+.icon-button {
+  min-width: 48px;
+  height: 38px;
+  padding: 0 10px;
+  background: #fff8e8;
+  color: #19120d;
 }
 
-.sheet-card {
-  background: rgba(7, 12, 26, 0.95);
-  border-radius: 10px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 13px;
-}
-
-.sheet-type {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.8;
-}
-.sheet-type[data-type='character'] {
-  color: #8bd5ff;
-}
-.sheet-type[data-type='monster'] {
-  color: #ffb36b;
-}
-.sheet-name {
-  font-weight: 600;
-}
-.sheet-meta {
-  font-size: 11px;
-  opacity: 0.75;
-}
-
-.empty-hint {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.modal-backdrop {
+.modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.76);
+}
+
+.sheet-window {
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 3px solid #111;
+  border-radius: 4px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)),
+    repeating-linear-gradient(0deg, #f7f0df, #f7f0df 22px, #efe2c5 23px);
+  color: #111;
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.62);
+}
+
+.sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 50;
-}
-
-.modal-card {
-  width: min(420px, 100%);
-  background: rgba(10, 16, 32, 0.98);
-  border-radius: 16px;
-  padding: 16px 16px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
-}
-
-.editor-panel {
-  background: rgba(7, 12, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 10px;
-}
-
-.editor-header {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 3px solid #111;
+  background: #fbf6e9;
 }
 
-.editor-title {
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 12px;
-  opacity: 0.9;
-}
-
-.editor-status {
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.editor-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.editor-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.editor-field label {
-  opacity: 0.8;
-}
-
-.editor-field input {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(9, 14, 30, 0.9);
-  color: #f5f5f5;
-  outline: none;
-}
-.editor-field input:focus {
-  border-color: #4ea3ff;
-}
-
-/* Shadowdark-ish sheet layout */
-.sd-sheet {
-  display: grid;
-  gap: 12px;
-}
-
-.sd-head {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) 180px;
-  gap: 10px;
-  align-items: end;
-}
-
-.sd-brand {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.22);
+.sheet-header h2 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(34px, 7vw, 64px);
   font-weight: 900;
-  letter-spacing: 0.12em;
-  font-size: 12px;
-  text-transform: uppercase;
+  line-height: 0.95;
 }
 
-.sd-head-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.sheet-actions {
+  justify-content: flex-end;
 }
 
-.sd-head-meta {
+.primary.dark {
+  background: #111;
+  color: #fffaf0;
+}
+
+.primary.dark:hover {
+  background: #2b2119;
+}
+
+.secondary.dark {
+  border-color: #111;
+  background: #fffaf0;
+  color: #111;
+}
+
+.sheet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr 1.55fr;
+  gap: 14px;
+  padding: 18px 20px 22px;
+}
+
+.stats-column {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
+  align-content: start;
 }
 
-.sd-label {
-  font-size: 11px;
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.sd-input {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(9,14,30,0.9);
-  color: #f5f5f5;
-  outline: none;
-}
-
-.sd-input:focus {
-  border-color: rgba(104, 174, 255, 0.9);
-}
-
-.sd-title {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.sd-body {
-  display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) 260px;
-  gap: 12px;
-}
-
-.sd-col {
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(5, 10, 24, 0.55);
-  border-radius: 14px;
-  padding: 10px;
-}
-
-.sd-stats {
+.identity-column,
+.notes-column {
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
-.sd-stat {
+.stat-box,
+.big-stat,
+.wide-field,
+.coin-row label {
+  position: relative;
   display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(7, 12, 26, 0.75);
-}
-
-.sd-stat-name {
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  opacity: 0.9;
+  gap: 5px;
+  border: 2px solid #111;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.68);
+  color: #111;
+  padding: 7px;
   font-size: 12px;
 }
 
-.sd-stat-val {
-  width: 100%;
-  text-align: right;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(9,14,30,0.9);
-  color: #f5f5f5;
-  outline: none;
+.stat-box input,
+.big-stat input,
+.wide-field input,
+.wide-field textarea,
+.coin-row input {
+  border: 0;
+  border-bottom: 2px solid #111;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px 0 4px;
+  min-height: 30px;
 }
 
-.sd-core {
-  display: grid;
-  gap: 12px;
+.wide-field textarea {
+  min-height: 72px;
 }
 
-.sd-row {
+.big-stat {
+  min-height: 82px;
+}
+
+.attacks {
+  grid-column: 1 / -1;
+}
+
+.two-fields,
+.coin-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
-.sd-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.coin-row {
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.sd-badges {
-  grid-template-columns: 1fr 1fr;
+.tall textarea {
+  min-height: 190px;
 }
 
-.sd-badge {
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(7, 12, 26, 0.75);
-  border-radius: 14px;
-  padding: 10px;
-  display: grid;
-  gap: 6px;
+.gear-field textarea {
+  min-height: 150px;
 }
 
-.sd-badge-name {
-  font-size: 11px;
-  opacity: 0.8;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 800;
+.monster-notes textarea {
+  min-height: 120px;
 }
 
-.sd-badge-val {
-  width: 100%;
-  text-align: right;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(9,14,30,0.9);
-  color: #f5f5f5;
-  font-size: 16px;
-  font-weight: 800;
-  outline: none;
-}
-
-.sd-flavour {
-  display: grid;
-  gap: 10px;
-}
-
-/* Responsive */
-@media (max-width: 1100px) {
-  .sd-head {
-    grid-template-columns: 110px minmax(0, 1fr);
-  }
-  .sd-head-meta {
-    grid-column: 1 / -1;
-    grid-template-columns: 1fr 1fr;
-  }
-  .sd-body {
+@media (max-width: 900px) {
+  .dashboard,
+  .sheet-grid {
     grid-template-columns: 1fr;
   }
 
-  /* Shadowdark-ish sheet layout */
-  .sd-sheet {
-    display: grid;
-    gap: 12px;
-  }
-
-  .sd-head {
-    display: grid;
-    grid-template-columns: 110px minmax(0, 1fr) 180px;
-    gap: 10px;
-    align-items: end;
-  }
-
-  .sd-brand {
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(0,0,0,0.22);
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    font-size: 12px;
-    text-transform: uppercase;
-  }
-
-  .sd-head-main {
-    display: flex;
+  .topbar,
+  .list-toolbar,
+  .sheet-header {
+    align-items: flex-start;
     flex-direction: column;
-    gap: 4px;
   }
 
-  .sd-head-meta {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .sd-label {
-    font-size: 11px;
-    opacity: 0.8;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .sd-input {
+  .sheet-actions,
+  .list-controls {
     width: 100%;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(9,14,30,0.9);
-    color: #f5f5f5;
-    outline: none;
   }
 
-  .sd-input:focus {
-    border-color: rgba(104, 174, 255, 0.9);
-  }
-
-  .sd-title {
-    font-size: 14px;
-    font-weight: 700;
-  }
-
-  .sd-body {
-    display: grid;
-    grid-template-columns: 190px minmax(0, 1fr) 260px;
-    gap: 12px;
-  }
-
-  .sd-col {
-    border: 1px solid rgba(255,255,255,0.10);
-    background: rgba(5, 10, 24, 0.55);
-    border-radius: 14px;
-    padding: 10px;
-  }
-
-  .sd-stats {
-    display: grid;
-    gap: 10px;
-  }
-
-  .sd-stat {
-    display: grid;
-    grid-template-columns: 48px 1fr;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 10px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(7, 12, 26, 0.75);
-  }
-
-  .sd-stat-name {
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    opacity: 0.9;
-    font-size: 12px;
-  }
-
-  .sd-stat-val {
-    width: 100%;
-    text-align: right;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(9,14,30,0.9);
-    color: #f5f5f5;
-    outline: none;
-  }
-
-  .sd-core {
-    display: grid;
-    gap: 12px;
-  }
-
-  .sd-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .sd-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .sd-badges {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .sd-badge {
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(7, 12, 26, 0.75);
-    border-radius: 14px;
-    padding: 10px;
-    display: grid;
-    gap: 6px;
-  }
-
-  .sd-badge-name {
-    font-size: 11px;
-    opacity: 0.8;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 800;
-  }
-
-  .sd-badge-val {
-    width: 100%;
-    text-align: right;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(9,14,30,0.9);
-    color: #f5f5f5;
-    font-size: 16px;
-    font-weight: 800;
-    outline: none;
-  }
-
-  .sd-flavour {
-    display: grid;
-    gap: 10px;
-  }
-
-  /* Responsive */
-  @media (max-width: 1100px) {
-    .sd-head {
-      grid-template-columns: 110px minmax(0, 1fr);
-    }
-    .sd-head-meta {
-      grid-column: 1 / -1;
-      grid-template-columns: 1fr 1fr;
-    }
-    .sd-body {
-      grid-template-columns: 1fr;
-    }
+  .list-controls {
+    flex-wrap: wrap;
   }
 }
 
+@media (max-width: 560px) {
+  .workspace,
+  .auth-screen,
+  .modal-overlay {
+    padding: 14px;
+  }
 
+  .stats-column,
+  .two-fields,
+  .coin-row {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

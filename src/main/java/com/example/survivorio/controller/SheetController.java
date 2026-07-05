@@ -7,8 +7,6 @@ import com.example.survivorio.service.MonsterService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
-
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -33,6 +31,11 @@ public class SheetController {
         return characterService.create(character);
     }
 
+    @PutMapping("/characters/{id}")
+    public Character updateCharacter(@PathVariable Long id, @RequestBody Character character) {
+        return characterService.update(id, character);
+    }
+
     @GetMapping("/monsters")
     public List<Monster> getMonsters() {
         return monsterService.getAll();
@@ -43,24 +46,8 @@ public class SheetController {
         return monsterService.create(monster);
     }
 
-    @GetMapping("/characters/{id}")
-    public Character getCharacter(@PathVariable Long id) {
-        return characterService.getById(id);
-    }
-
-    @PatchMapping("/characters/{id}")
-    public Character patchCharacter(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
-        return characterService.patch(id, updates);
-    }
-
-    @GetMapping("/monsters/{id}")
-    public Monster getMonster(@PathVariable Long id) {
-        return monsterService.getById(id);
-    }
-
-    @PatchMapping("/monsters/{id}")
-    public Monster patchMonster(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
-        return monsterService.patch(id, updates);
+    @PutMapping("/monsters/{id}")
+    public Monster updateMonster(@PathVariable Long id, @RequestBody Monster monster) {
+        return monsterService.update(id, monster);
     }
 }
-
