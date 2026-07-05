@@ -5,17 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d0c8afa9-718b-4985-afb9-af96236fb2d6" name="Changes" comment="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
-      <change afterPath="$PROJECT_DIR$/frontend/frontend/public/dnd-background.avif" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/frontend/src/components/SheetList.vue" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/frontend/src/types/sheets.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/frontend/src/App.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/controller/SheetController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Character.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/entity/Monster.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/CharacterService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/survivorio/service/MonsterService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,7 +89,7 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "Spring Boot.SurvivorIoApplication.executor": "Run",
-    "git-widget-placeholder": "Rebasing main",
+    "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Uni/okanprog3derlappen/prog3",
@@ -124,7 +115,7 @@
   <component name="RunManager">
     <configuration name="SurvivorIoApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <envs>
-        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan" />
+        <env name="DB_URL" value="jdbc:postgresql://dpg-d4tor4v17kns73cold0g-a.frankfurt-postgres.render.com:5432/okan?sslmode=require" />
         <env name="DB_USER" value="okan_user" />
         <env name="DB_PASSWORD" value="y0W6V0ETHMP9MHIQ9SsLz4cqqiAYdCTy" />
       </envs>
@@ -186,6 +177,15 @@
       <workItem from="1783213774693" duration="637000" />
       <workItem from="1783218060767" duration="996000" />
     </task>
+    <task id="LOCAL-00001" summary="update frontend und backend&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;frontend/frontend/src/App.vue&#10;#&#9;src/main/java/com/example/survivorio/controller/SheetController.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Character.java&#10;#&#9;src/main/java/com/example/survivorio/entity/Monster.java&#10;#&#9;src/main/java/com/example/survivorio/service/CharacterService.java&#10;#&#9;src/main/java/com/example/survivorio/service/MonsterService.java">
+      <option name="closed" value="true" />
+      <created>1783220717965</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1783220717965</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
