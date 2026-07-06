@@ -18,6 +18,7 @@ public class Character {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    private String gender = "male";
     private String ancestry;
     private String className;
     private int level;
@@ -38,6 +39,8 @@ public class Character {
     private String background;
     private String deity;
     private String talentsSpells;
+    @Column(columnDefinition = "TEXT")
+    private String journal;
     private String attacks;
     private String gear;
     @Column(columnDefinition = "TEXT")
@@ -116,6 +119,9 @@ public class Character {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+
     public String getAncestry() { return ancestry; }
     public void setAncestry(String ancestry) { this.ancestry = ancestry; }
 
@@ -166,6 +172,9 @@ public class Character {
 
     public String getTalentsSpells() { return talentsSpells; }
     public void setTalentsSpells(String talentsSpells) { this.talentsSpells = talentsSpells; }
+
+    public String getJournal() { return journal; }
+    public void setJournal(String journal) { this.journal = journal; }
 
     public String getAttacks() { return attacks; }
     public void setAttacks(String attacks) { this.attacks = attacks; }

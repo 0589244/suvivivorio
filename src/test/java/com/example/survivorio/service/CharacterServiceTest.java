@@ -58,11 +58,13 @@ class CharacterServiceTest {
 
         Character data = new Character();
         data.setName("Mira");
+        data.setGender("female");
         data.setClassName("Wizard");
         data.setLevel(3);
         data.setHp(18);
         data.setAc(12);
         data.setGear("Spellbook");
+        data.setJournal("Found the lost tower.");
         data.setProfileImage("data:image/png;base64,portrait");
         data.setCreatedAt("new-date");
 
@@ -72,11 +74,13 @@ class CharacterServiceTest {
         Character updated = characterService.update(owner, 7L, data);
 
         assertThat(updated.getName()).isEqualTo("Mira");
+        assertThat(updated.getGender()).isEqualTo("female");
         assertThat(updated.getClassName()).isEqualTo("Wizard");
         assertThat(updated.getLevel()).isEqualTo(3);
         assertThat(updated.getHp()).isEqualTo(18);
         assertThat(updated.getAc()).isEqualTo(12);
         assertThat(updated.getGear()).isEqualTo("Spellbook");
+        assertThat(updated.getJournal()).isEqualTo("Found the lost tower.");
         assertThat(updated.getProfileImage()).isEqualTo("data:image/png;base64,portrait");
         assertThat(updated.getOwner()).isSameAs(owner);
         assertThat(updated.getCreatedAt()).isEqualTo("new-date");

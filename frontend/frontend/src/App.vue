@@ -9,6 +9,13 @@ const USERNAME_STORAGE_KEY = 'dnd-sheet-username'
 const REQUEST_TIMEOUT_MS = 18000
 const RETRY_DELAYS_MS = [1800, 4200, 7000]
 const PROFILE_IMAGE_MAX_BYTES = 1_500_000
+const DEFAULT_PROFILE_IMAGES = {
+  male: '/portrait-male.png',
+  female: '/portrait-female.png',
+  monster: '/portrait-monster.png',
+}
+
+type CharacterGender = CharacterSheet['gender']
 
 type AuthResponse = {
   token: string
@@ -41,6 +48,7 @@ const isSaving = ref(false)
 const isDeleting = ref(false)
 
 const activeSheet = ref<SheetRecord | null>(null)
+const activeSheetTab = ref<'sheet' | 'journal'>('sheet')
 const filterType = ref<'all' | SheetType>('all')
 const sortKey = ref<'createdAt' | 'name'>('createdAt')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -73,6 +81,7 @@ function emptyCharacter(): CharacterSheet {
   return {
     sheetType: 'character',
     name: '',
+    gender: 'male',
     ancestry: '',
     className: '',
     level: 1,
@@ -90,9 +99,10 @@ function emptyCharacter(): CharacterSheet {
     background: '',
     deity: '',
     talentsSpells: '',
+    journal: '',
     attacks: '',
     gear: '',
-    profileImage: '',
+    profileImage: defaultCharacterPortrait('male'),
     gp: 0,
     sp: 0,
     cp: 0,
@@ -116,7 +126,7 @@ function emptyMonster(): MonsterSheet {
     cha: 10,
     attacks: '',
     gear: '',
-    profileImage: '',
+    profileImage: DEFAULT_PROFILE_IMAGES.monster,
     gp: 0,
     sp: 0,
     cp: 0,
@@ -124,10 +134,13 @@ function emptyMonster(): MonsterSheet {
 }
 
 function normalizeCharacter(data: Partial<CharacterSheet>): CharacterSheet {
+  const gender = data.gender === 'female' ? 'female' : 'male'
+
   return {
     ...emptyCharacter(),
     ...data,
     sheetType: 'character',
+    gender,
     str: numberOrDefault(data.str, 10),
     dex: numberOrDefault(data.dex, 10),
     con: numberOrDefault(data.con, 10),
@@ -141,6 +154,8 @@ function normalizeCharacter(data: Partial<CharacterSheet>): CharacterSheet {
     gp: numberOrDefault(data.gp, 0),
     sp: numberOrDefault(data.sp, 0),
     cp: numberOrDefault(data.cp, 0),
+    journal: data.journal ?? '',
+    profileImage: data.profileImage || defaultCharacterPortrait(gender),
   }
 }
 
@@ -160,6 +175,7 @@ function normalizeMonster(data: Partial<MonsterSheet>): MonsterSheet {
     gp: numberOrDefault(data.gp, 0),
     sp: numberOrDefault(data.sp, 0),
     cp: numberOrDefault(data.cp, 0),
+    profileImage: data.profileImage || DEFAULT_PROFILE_IMAGES.monster,
   }
 }
 
@@ -170,6 +186,22 @@ function cloneSheet(sheet: SheetRecord): SheetRecord {
 function numberOrDefault(value: unknown, fallback: number) {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : fallback
+}
+
+function defaultCharacterPortrait(gender: CharacterGender) {
+  return gender === 'female' ? DEFAULT_PROFILE_IMAGES.female : DEFAULT_PROFILE_IMAGES.male
+}
+
+function defaultSheetPortrait(sheet: SheetRecord) {
+  if (sheet.sheetType === 'monster') {
+    return DEFAULT_PROFILE_IMAGES.monster
+  }
+
+  return defaultCharacterPortrait(sheet.gender)
+}
+
+function isDefaultProfileImage(value: string) {
+  return Object.values(DEFAULT_PROFILE_IMAGES).some((image) => image === value)
 }
 
 function normalizeApiBaseUrl(url: string) {
@@ -452,22 +484,42 @@ function openNewCharacter() {
   saveError.value = null
   saveSuccess.value = null
   activeSheet.value = emptyCharacter()
+  activeSheetTab.value = 'sheet'
 }
 
 function openNewMonster() {
   saveError.value = null
   saveSuccess.value = null
   activeSheet.value = emptyMonster()
+  activeSheetTab.value = 'sheet'
 }
 
 function openExistingSheet(sheet: SheetRecord) {
   saveError.value = null
   saveSuccess.value = null
   activeSheet.value = cloneSheet(sheet)
+  activeSheetTab.value = 'sheet'
 }
 
 function closeSheetEditor() {
   activeSheet.value = null
+  activeSheetTab.value = 'sheet'
+}
+
+function handleCharacterGenderChange(gender: CharacterGender) {
+  if (!activeSheet.value || activeSheet.value.sheetType !== 'character') {
+    return
+  }
+
+  const currentImage = activeSheet.value.profileImage
+  activeSheet.value.gender = gender
+
+  if (!currentImage || isDefaultProfileImage(currentImage)) {
+    activeSheet.value.profileImage = defaultCharacterPortrait(gender)
+  }
+
+  saveSuccess.value = null
+  saveError.value = null
 }
 
 async function handleProfileImageUpload(event: Event) {
@@ -508,7 +560,7 @@ function removeProfileImage() {
     return
   }
 
-  activeSheet.value.profileImage = ''
+  activeSheet.value.profileImage = defaultSheetPortrait(activeSheet.value)
   saveSuccess.value = null
   saveError.value = null
 }
@@ -747,7 +799,7 @@ function upsertSheet(sheet: SheetRecord) {
 
           <button class="create-tile monster" type="button" @click="openNewMonster">
             <strong>Monster erstellen</strong>
-            <span>Stats, Angriffe und Loot fuer den Dungeonmaster.</span>
+            <span>Stats, Waffen und Loot fuer den Dungeonmaster.</span>
           </button>
         </aside>
 
@@ -789,192 +841,277 @@ function upsertSheet(sheet: SheetRecord) {
 
     <div v-if="activeSheet" class="modal-overlay" @click.self="closeSheetEditor">
       <form class="sheet-window" @submit.prevent="saveActiveSheet">
-        <header class="sheet-header">
-          <div class="sheet-title-area">
-            <h2>{{ activeSheet.sheetType === 'character' ? 'Charakter' : 'Monster' }}</h2>
+        <div class="sheet-nav">
+          <button
+            class="sheet-nav-item"
+            :class="{ active: activeSheetTab === 'sheet' }"
+            type="button"
+            @click="activeSheetTab = 'sheet'"
+          >
+            Sheet
+          </button>
+          <button
+            v-if="activeSheet.sheetType === 'character'"
+            class="sheet-nav-item"
+            :class="{ active: activeSheetTab === 'journal' }"
+            type="button"
+            @click="activeSheetTab = 'journal'"
+          >
+            Journal
+          </button>
+        </div>
 
-            <div class="profile-control">
+        <div class="sheet-layout">
+          <aside class="sheet-profile-panel">
+            <div class="profile-frame">
               <div class="profile-preview">
                 <img v-if="activeSheet.profileImage" :src="activeSheet.profileImage" alt="" />
                 <span v-else>Bild</span>
               </div>
-              <div class="profile-buttons">
-                <label class="profile-upload">
-                  Hochladen
-                  <input type="file" accept="image/*" @change="handleProfileImageUpload" />
-                </label>
+            </div>
+
+            <div class="profile-name-card">
+              <strong>{{ activeSheet.name || (activeSheet.sheetType === 'character' ? 'Neuer Charakter' : 'Neues Monster') }}</strong>
+              <span v-if="activeSheet.sheetType === 'character'">
+                Stufe {{ activeSheet.level || 1 }} {{ activeSheet.className || 'Klasse' }}
+              </span>
+              <span v-else>
+                Stufe {{ activeSheet.challenge || '-' }} {{ activeSheet.type || 'Monsterart' }}
+              </span>
+            </div>
+
+            <div class="profile-quick-stats">
+              <span>
+                TP
+                <strong>{{ activeSheet.sheetType === 'character' ? activeSheet.hp : activeSheet.hitPoints }}</strong>
+              </span>
+              <span>
+                RK
+                <strong>{{ activeSheet.sheetType === 'character' ? activeSheet.ac : activeSheet.armorClass }}</strong>
+              </span>
+            </div>
+
+            <div v-if="activeSheet.sheetType === 'character'" class="gender-picker">
+              <p>Geschlecht</p>
+              <div class="gender-options">
                 <button
-                  v-if="activeSheet.profileImage"
-                  class="profile-remove"
+                  class="gender-option"
+                  :class="{ active: activeSheet.gender === 'male' }"
                   type="button"
-                  @click="removeProfileImage"
+                  @click="handleCharacterGenderChange('male')"
                 >
-                  Entfernen
+                  Maennlich
+                </button>
+                <button
+                  class="gender-option"
+                  :class="{ active: activeSheet.gender === 'female' }"
+                  type="button"
+                  @click="handleCharacterGenderChange('female')"
+                >
+                  Weiblich
                 </button>
               </div>
             </div>
-          </div>
 
-          <div class="sheet-actions">
-            <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
-            <span v-if="saveError" class="error-msg">{{ saveError }}</span>
-            <button class="primary dark" type="submit" :disabled="isSaving || isDeleting">
-              {{ isSaving ? 'Speichert...' : 'Speichern' }}
-            </button>
-            <button
-              v-if="activeSheet.id"
-              class="danger dark"
-              type="button"
-              :disabled="isSaving || isDeleting"
-              @click="deleteSheet(activeSheet)"
-            >
-              {{ isDeleting ? 'Loescht...' : 'Loeschen' }}
-            </button>
-            <button class="secondary dark" type="button" @click="closeSheetEditor">
-              Schliessen
-            </button>
-          </div>
-        </header>
-
-        <div class="sheet-grid">
-          <section class="stats-column">
-            <label class="stat-box">
-              STR
-              <input v-model.number="activeSheet.str" type="number" />
-            </label>
-            <label class="stat-box">
-              INT
-              <input v-model.number="activeSheet.intel" type="number" />
-            </label>
-            <label class="stat-box">
-              DEX
-              <input v-model.number="activeSheet.dex" type="number" />
-            </label>
-            <label class="stat-box">
-              WIS
-              <input v-model.number="activeSheet.wis" type="number" />
-            </label>
-            <label class="stat-box">
-              CON
-              <input v-model.number="activeSheet.con" type="number" />
-            </label>
-            <label class="stat-box">
-              CHA
-              <input v-model.number="activeSheet.cha" type="number" />
-            </label>
-
-            <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
-              HP
-              <input v-model.number="activeSheet.hp" type="number" />
-            </label>
-            <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
-              AC
-              <input v-model.number="activeSheet.ac" type="number" />
-            </label>
-
-            <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
-              HP
-              <input v-model.number="activeSheet.hitPoints" type="number" />
-            </label>
-            <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
-              AC
-              <input v-model.number="activeSheet.armorClass" type="number" />
-            </label>
-
-            <label class="wide-field attacks">
-              Attacks
-              <textarea v-model="activeSheet.attacks"></textarea>
-            </label>
-          </section>
-
-          <section class="identity-column">
-            <label class="wide-field">
-              Name
-              <input v-model="activeSheet.name" type="text" />
-            </label>
-
-            <template v-if="activeSheet.sheetType === 'character'">
-              <label class="wide-field">
-                Ancestry
-                <input v-model="activeSheet.ancestry" type="text" />
+            <div class="profile-buttons">
+              <label class="profile-upload">
+                Portrait hochladen
+                <input type="file" accept="image/*" @change="handleProfileImageUpload" />
               </label>
-              <label class="wide-field">
-                Class
-                <input v-model="activeSheet.className" type="text" />
-              </label>
-              <div class="two-fields">
-                <label class="wide-field">
-                  Level
-                  <input v-model.number="activeSheet.level" type="number" min="1" />
-                </label>
-                <label class="wide-field">
-                  XP
-                  <input v-model.number="activeSheet.xp" type="number" min="0" />
-                </label>
+              <button
+                v-if="activeSheet.profileImage && !isDefaultProfileImage(activeSheet.profileImage)"
+                class="profile-remove"
+                type="button"
+                @click="removeProfileImage"
+              >
+                Standardbild nutzen
+              </button>
+            </div>
+          </aside>
+
+          <section class="sheet-paper">
+            <header class="sheet-header">
+              <div class="sheet-title-area">
+                <p class="sheet-kicker">{{ activeSheet.sheetType === 'character' ? 'Spieler-Sheet' : 'Dungeonmaster-Sheet' }}</p>
+                <h2>{{ activeSheet.sheetType === 'character' ? 'Charakter' : 'Monster' }}</h2>
+                <p class="sheet-subtitle">
+                  {{ activeSheet.name || (activeSheet.sheetType === 'character' ? 'Neues Charakterblatt' : 'Neues Monsterblatt') }}
+                </p>
               </div>
-              <label class="wide-field">
-                Title
-                <input v-model="activeSheet.title" type="text" />
-              </label>
-              <label class="wide-field">
-                Alignment
-                <input v-model="activeSheet.alignment" type="text" />
-              </label>
-              <label class="wide-field">
-                Background
-                <input v-model="activeSheet.background" type="text" />
-              </label>
-              <label class="wide-field">
-                Deity
-                <input v-model="activeSheet.deity" type="text" />
-              </label>
-            </template>
 
-            <template v-else>
-              <label class="wide-field">
-                Type
-                <input v-model="activeSheet.type" type="text" />
-              </label>
-              <label class="wide-field">
-                Challenge
-                <input v-model="activeSheet.challenge" type="text" />
-              </label>
-              <label class="wide-field monster-notes">
-                Notes
-                <textarea v-model="activeSheet.notes"></textarea>
-              </label>
-            </template>
-          </section>
+              <div class="sheet-actions">
+                <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
+                <span v-if="saveError" class="error-msg">{{ saveError }}</span>
+                <button class="primary dark" type="submit" :disabled="isSaving || isDeleting">
+                  {{ isSaving ? 'Speichert...' : 'Speichern' }}
+                </button>
+                <button
+                  v-if="activeSheet.id"
+                  class="danger dark"
+                  type="button"
+                  :disabled="isSaving || isDeleting"
+                  @click="deleteSheet(activeSheet)"
+                >
+                  {{ isDeleting ? 'Loescht...' : 'Loeschen' }}
+                </button>
+                <button class="secondary dark" type="button" @click="closeSheetEditor">
+                  Schliessen
+                </button>
+              </div>
+            </header>
 
-          <section class="notes-column">
-            <label v-if="activeSheet.sheetType === 'character'" class="wide-field tall">
-              Talents / Spells
-              <textarea v-model="activeSheet.talentsSpells"></textarea>
-            </label>
-            <label v-else class="wide-field tall">
-              Special traits
-              <textarea v-model="activeSheet.notes"></textarea>
-            </label>
+            <div v-if="activeSheetTab === 'sheet'" class="sheet-grid">
+              <section class="stats-column">
+                <p class="section-heading">Attribute</p>
+                <label class="stat-box">
+                  STR
+                  <input v-model.number="activeSheet.str" type="number" />
+                </label>
+                <label class="stat-box">
+                  INT
+                  <input v-model.number="activeSheet.intel" type="number" />
+                </label>
+                <label class="stat-box">
+                  DEX
+                  <input v-model.number="activeSheet.dex" type="number" />
+                </label>
+                <label class="stat-box">
+                  WIS
+                  <input v-model.number="activeSheet.wis" type="number" />
+                </label>
+                <label class="stat-box">
+                  CON
+                  <input v-model.number="activeSheet.con" type="number" />
+                </label>
+                <label class="stat-box">
+                  CHA
+                  <input v-model.number="activeSheet.cha" type="number" />
+                </label>
 
-            <div class="coin-row">
-              <label>
-                GP
-                <input v-model.number="activeSheet.gp" type="number" min="0" />
-              </label>
-              <label>
-                SP
-                <input v-model.number="activeSheet.sp" type="number" min="0" />
-              </label>
-              <label>
-                CP
-                <input v-model.number="activeSheet.cp" type="number" min="0" />
-              </label>
+                <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
+                  Trefferpunkte
+                  <input v-model.number="activeSheet.hp" type="number" min="0" />
+                </label>
+                <label v-if="activeSheet.sheetType === 'character'" class="big-stat">
+                  Ruestungsklasse
+                  <input v-model.number="activeSheet.ac" type="number" min="0" />
+                </label>
+
+                <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
+                  Trefferpunkte
+                  <input v-model.number="activeSheet.hitPoints" type="number" min="0" />
+                </label>
+                <label v-if="activeSheet.sheetType === 'monster'" class="big-stat">
+                  Ruestungsklasse
+                  <input v-model.number="activeSheet.armorClass" type="number" min="0" />
+                </label>
+
+                <label class="wide-field weapons-field">
+                  Waffen
+                  <textarea v-model="activeSheet.attacks"></textarea>
+                </label>
+              </section>
+
+              <section class="identity-column">
+                <p class="section-heading">Profil</p>
+                <label class="wide-field">
+                  Name
+                  <input v-model="activeSheet.name" type="text" />
+                </label>
+
+                <template v-if="activeSheet.sheetType === 'character'">
+                  <label class="wide-field">
+                    Herkunft
+                    <input v-model="activeSheet.ancestry" type="text" />
+                  </label>
+                  <label class="wide-field">
+                    Klasse
+                    <input v-model="activeSheet.className" type="text" />
+                  </label>
+                  <div class="two-fields">
+                    <label class="wide-field">
+                      Stufe
+                      <input v-model.number="activeSheet.level" type="number" min="1" />
+                    </label>
+                    <label class="wide-field">
+                      XP
+                      <input v-model.number="activeSheet.xp" type="number" min="0" />
+                    </label>
+                  </div>
+                  <label class="wide-field">
+                    Titel
+                    <input v-model="activeSheet.title" type="text" />
+                  </label>
+                  <label class="wide-field">
+                    Gesinnung
+                    <input v-model="activeSheet.alignment" type="text" />
+                  </label>
+                  <label class="wide-field">
+                    Hintergrund
+                    <input v-model="activeSheet.background" type="text" />
+                  </label>
+                  <label class="wide-field">
+                    Gottheit
+                    <input v-model="activeSheet.deity" type="text" />
+                  </label>
+                </template>
+
+                <template v-else>
+                  <label class="wide-field">
+                    Art
+                    <input v-model="activeSheet.type" type="text" />
+                  </label>
+                  <label class="wide-field">
+                    Stufe
+                    <input v-model="activeSheet.challenge" type="text" />
+                  </label>
+                </template>
+              </section>
+
+              <section class="notes-column">
+                <p class="section-heading">
+                  {{ activeSheet.sheetType === 'character' ? 'Zauber/Talente und Ausruestung' : 'Besonderheiten/Notizen und Ausruestung' }}
+                </p>
+                <label v-if="activeSheet.sheetType === 'character'" class="wide-field tall">
+                  Zauber / Talente
+                  <textarea v-model="activeSheet.talentsSpells"></textarea>
+                </label>
+                <label v-else class="wide-field tall">
+                  Besonderheiten / Notizen
+                  <textarea v-model="activeSheet.notes"></textarea>
+                </label>
+
+                <div class="coin-row">
+                  <label>
+                    GP
+                    <input v-model.number="activeSheet.gp" type="number" min="0" />
+                  </label>
+                  <label>
+                    SP
+                    <input v-model.number="activeSheet.sp" type="number" min="0" />
+                  </label>
+                  <label>
+                    CP
+                    <input v-model.number="activeSheet.cp" type="number" min="0" />
+                  </label>
+                </div>
+
+                <label class="wide-field gear-field">
+                  Ausruestung
+                  <textarea v-model="activeSheet.gear"></textarea>
+                </label>
+              </section>
             </div>
 
-            <label class="wide-field gear-field">
-              Gear
-              <textarea v-model="activeSheet.gear"></textarea>
-            </label>
+            <div v-else-if="activeSheet.sheetType === 'character'" class="journal-page">
+              <section class="journal-panel">
+                <p class="section-heading">Journal</p>
+                <label class="wide-field journal-field">
+                  Geschehnisse / Notizen
+                  <textarea v-model="activeSheet.journal"></textarea>
+                </label>
+              </section>
+            </div>
           </section>
         </div>
       </form>
@@ -1293,22 +1430,186 @@ button:disabled {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 18px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.76);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(195, 154, 69, 0.16), transparent 36%),
+    rgba(0, 0, 0, 0.82);
 }
 
 .sheet-window {
-  width: min(1120px, 100%);
-  max-height: calc(100vh - 48px);
+  width: min(1220px, 100%);
+  max-height: calc(100vh - 36px);
   overflow: auto;
-  border: 3px solid #111;
-  border-radius: 4px;
+  border: 1px solid rgba(223, 183, 102, 0.68);
+  border-radius: 8px;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)),
-    repeating-linear-gradient(0deg, #f7f0df, #f7f0df 22px, #efe2c5 23px);
-  color: #111;
-  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.62);
+    linear-gradient(135deg, rgba(13, 24, 34, 0.98), rgba(34, 24, 18, 0.98)),
+    #152638;
+  color: #1e1510;
+  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.72);
+}
+
+.sheet-nav {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid rgba(223, 183, 102, 0.38);
+  background: #20394f;
+}
+
+.sheet-nav-item {
+  display: grid;
+  place-items: center;
+  min-width: 96px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 0;
+  background: transparent;
+  color: #e6d1a6;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sheet-nav-item.active {
+  background: #7f2b22;
+  color: #fff8e8;
+}
+
+.sheet-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px;
+}
+
+.sheet-profile-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.profile-frame {
+  padding: 10px;
+  border: 3px double #d1ab5f;
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(8, 18, 29, 0.82), rgba(8, 18, 29, 0.94)),
+    radial-gradient(circle at 50% 22%, rgba(209, 171, 95, 0.26), transparent 58%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.12),
+    0 18px 32px rgba(0, 0, 0, 0.34);
+}
+
+.profile-name-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid rgba(209, 171, 95, 0.4);
+  border-top: 4px solid #7f2b22;
+  border-radius: 6px;
+  background:
+    linear-gradient(rgba(255, 251, 240, 0.92), rgba(238, 223, 191, 0.94)),
+    #f6ecd5;
+  color: #221712;
+  text-align: center;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.22);
+}
+
+.profile-name-card strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 26px;
+  line-height: 1.05;
+}
+
+.profile-name-card span {
+  color: #6b5740;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.profile-quick-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.profile-quick-stats span {
+  display: grid;
+  gap: 5px;
+  min-height: 62px;
+  place-items: center;
+  border: 1px solid rgba(209, 171, 95, 0.42);
+  border-radius: 6px;
+  background: rgba(255, 248, 232, 0.9);
+  color: #5f4733;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.profile-quick-stats strong {
+  color: #7f2b22;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.gender-picker {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(209, 171, 95, 0.42);
+  border-radius: 6px;
+  background: rgba(255, 248, 232, 0.9);
+}
+
+.gender-picker p {
+  margin: 0;
+  color: #5f4733;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.gender-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gender-option {
+  min-height: 36px;
+  border: 1px solid rgba(127, 43, 34, 0.28);
+  border-radius: 5px;
+  background: rgba(246, 236, 213, 0.8);
+  color: #221712;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.gender-option.active {
+  background: #7f2b22;
+  color: #fff8e8;
+}
+
+.sheet-paper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #9c3d31;
+  border-radius: 6px;
+  background:
+    linear-gradient(rgba(250, 238, 210, 0.88), rgba(250, 238, 210, 0.95)),
+    radial-gradient(circle at 22% 10%, rgba(255, 255, 255, 0.46), transparent 34%),
+    repeating-linear-gradient(0deg, #f6ecd5, #f6ecd5 20px, #eadab8 21px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.65),
+    0 22px 44px rgba(0, 0, 0, 0.3);
 }
 
 .sheet-header {
@@ -1319,23 +1620,41 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 20px 12px;
-  border-bottom: 3px solid #111;
-  background: #fbf6e9;
+  padding: 20px 24px 16px;
+  border-bottom: 2px solid #7b2b22;
+  background:
+    linear-gradient(90deg, rgba(246, 236, 213, 0.98), rgba(235, 216, 178, 0.98)),
+    #f6ecd5;
 }
 
 .sheet-title-area {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
 .sheet-header h2 {
+  margin: 0;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(34px, 7vw, 64px);
+  font-size: clamp(44px, 6vw, 76px);
   font-weight: 900;
   line-height: 0.95;
+  color: #7b2b22;
+}
+
+.sheet-kicker {
+  margin: 0 0 6px;
+  color: #5f4733;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sheet-subtitle {
+  margin: 0;
+  color: #5f4733;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .profile-control {
@@ -1347,14 +1666,16 @@ button:disabled {
 .profile-preview {
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 100%;
+  aspect-ratio: 1;
   overflow: hidden;
-  border: 3px solid #111;
+  border: 1px solid rgba(195, 154, 69, 0.75);
   border-radius: 4px;
-  background: #fffaf0;
-  color: #111;
-  font-size: 12px;
+  background:
+    linear-gradient(rgba(15, 31, 45, 0.9), rgba(15, 31, 45, 0.98)),
+    #132333;
+  color: #f4dfb2;
+  font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -1372,12 +1693,12 @@ button:disabled {
 
 .profile-upload,
 .profile-remove {
-  min-height: 31px;
-  padding: 6px 10px;
-  border: 1px solid #111;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid rgba(209, 171, 95, 0.55);
   border-radius: 5px;
-  background: #fffaf0;
-  color: #111;
+  background: #f6ecd5;
+  color: #19120d;
   cursor: pointer;
   font-size: 12px;
   font-weight: 900;
@@ -1398,7 +1719,7 @@ button:disabled {
 }
 
 .primary.dark {
-  background: #111;
+  background: #14100d;
   color: #fffaf0;
 }
 
@@ -1407,9 +1728,9 @@ button:disabled {
 }
 
 .secondary.dark {
-  border-color: #111;
-  background: #fffaf0;
-  color: #111;
+  border-color: rgba(34, 23, 18, 0.5);
+  background: rgba(255, 250, 238, 0.88);
+  color: #19120d;
 }
 
 .danger.dark {
@@ -1424,9 +1745,9 @@ button:disabled {
 
 .sheet-grid {
   display: grid;
-  grid-template-columns: 1fr 1.05fr 1.55fr;
-  gap: 14px;
-  padding: 18px 20px 22px;
+  grid-template-columns: 0.9fr 1.12fr 1.38fr;
+  gap: 12px;
+  padding: 22px 24px 26px;
 }
 
 .stats-column {
@@ -1443,19 +1764,64 @@ button:disabled {
   align-content: start;
 }
 
+.section-heading {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #152637;
+  border-radius: 5px;
+  background: #1f3448;
+  color: #fffaf0;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.journal-page {
+  display: grid;
+  flex: 1;
+  min-height: 420px;
+  padding: 22px 24px 26px;
+}
+
+.journal-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.journal-field {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.journal-field textarea {
+  height: 100%;
+  min-height: min(64vh, 620px);
+}
+
+.stats-column .section-heading {
+  grid-column: 1 / -1;
+}
+
 .stat-box,
 .big-stat,
 .wide-field,
 .coin-row label {
   position: relative;
   display: grid;
-  gap: 5px;
-  border: 2px solid #111;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.68);
-  color: #111;
-  padding: 7px;
+  gap: 7px;
+  border: 1px solid rgba(92, 48, 38, 0.42);
+  border-radius: 5px;
+  background:
+    linear-gradient(rgba(255, 252, 244, 0.82), rgba(242, 226, 193, 0.76)),
+    rgba(255, 252, 244, 0.72);
+  color: #221712;
+  padding: 10px;
   font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: inset 0 -1px 0 rgba(127, 43, 34, 0.14);
 }
 
 .stat-box input,
@@ -1464,12 +1830,21 @@ button:disabled {
 .wide-field textarea,
 .coin-row input {
   border: 0;
-  border-bottom: 2px solid #111;
+  border-bottom: 2px solid rgba(92, 48, 38, 0.72);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   padding: 2px 0 4px;
   min-height: 30px;
+  color: #1e1510;
+  font-weight: 900;
+}
+
+.stat-box input,
+.big-stat input {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  line-height: 1;
 }
 
 .wide-field textarea {
@@ -1477,10 +1852,10 @@ button:disabled {
 }
 
 .big-stat {
-  min-height: 82px;
+  min-height: 88px;
 }
 
-.attacks {
+.weapons-field {
   grid-column: 1 / -1;
 }
 
@@ -1503,22 +1878,33 @@ button:disabled {
   min-height: 150px;
 }
 
-.monster-notes textarea {
-  min-height: 120px;
+input[type='number'] {
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 @media (max-width: 900px) {
   .dashboard,
+  .sheet-layout,
   .sheet-grid {
     grid-template-columns: 1fr;
   }
 
   .topbar,
   .list-toolbar,
-  .sheet-title-area,
   .sheet-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .sheet-profile-panel {
+    grid-template-columns: minmax(170px, 230px) minmax(0, 1fr);
+    align-items: start;
   }
 
   .sheet-actions,
@@ -1540,6 +1926,7 @@ button:disabled {
 
   .stats-column,
   .two-fields,
+  .sheet-profile-panel,
   .coin-row {
     grid-template-columns: 1fr;
   }

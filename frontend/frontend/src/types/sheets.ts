@@ -4,6 +4,7 @@ export type CharacterSheet = {
   id?: number
   sheetType: 'character'
   name: string
+  gender: 'male' | 'female'
   ancestry: string
   className: string
   level: number
@@ -21,6 +22,7 @@ export type CharacterSheet = {
   background: string
   deity: string
   talentsSpells: string
+  journal: string
   attacks: string
   gear: string
   profileImage: string

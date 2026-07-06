@@ -38,6 +38,7 @@ public class CharacterService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Character not found"));
 
         existing.setName(data.getName());
+        existing.setGender(data.getGender());
         existing.setAncestry(data.getAncestry());
         existing.setClassName(data.getClassName());
         existing.setLevel(data.getLevel());
@@ -55,6 +56,7 @@ public class CharacterService {
         existing.setBackground(data.getBackground());
         existing.setDeity(data.getDeity());
         existing.setTalentsSpells(data.getTalentsSpells());
+        existing.setJournal(data.getJournal());
         existing.setAttacks(data.getAttacks());
         existing.setGear(data.getGear());
         existing.setProfileImage(data.getProfileImage());
