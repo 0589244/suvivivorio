@@ -62,6 +62,7 @@ class MonsterServiceTest {
         data.setHitPoints(35);
         data.setChallenge("2");
         data.setGear("Longsword");
+        data.setProfileImage("data:image/png;base64,monster");
 
         when(repository.findByIdAndOwner(5L, owner)).thenReturn(Optional.of(existing));
         when(repository.save(any(Monster.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -74,6 +75,7 @@ class MonsterServiceTest {
         assertThat(updated.getHitPoints()).isEqualTo(35);
         assertThat(updated.getChallenge()).isEqualTo("2");
         assertThat(updated.getGear()).isEqualTo("Longsword");
+        assertThat(updated.getProfileImage()).isEqualTo("data:image/png;base64,monster");
         assertThat(updated.getOwner()).isSameAs(owner);
         verify(repository).findByIdAndOwner(5L, owner);
     }

@@ -8,6 +8,7 @@ const TOKEN_STORAGE_KEY = 'dnd-sheet-token'
 const USERNAME_STORAGE_KEY = 'dnd-sheet-username'
 const REQUEST_TIMEOUT_MS = 18000
 const RETRY_DELAYS_MS = [1800, 4200, 7000]
+const PROFILE_IMAGE_MAX_BYTES = 1_500_000
 
 type AuthResponse = {
   token: string
@@ -91,6 +92,7 @@ function emptyCharacter(): CharacterSheet {
     talentsSpells: '',
     attacks: '',
     gear: '',
+    profileImage: '',
     gp: 0,
     sp: 0,
     cp: 0,
@@ -114,6 +116,7 @@ function emptyMonster(): MonsterSheet {
     cha: 10,
     attacks: '',
     gear: '',
+    profileImage: '',
     gp: 0,
     sp: 0,
     cp: 0,
@@ -467,6 +470,58 @@ function closeSheetEditor() {
   activeSheet.value = null
 }
 
+async function handleProfileImageUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+
+  if (!activeSheet.value || !file) {
+    return
+  }
+
+  saveSuccess.value = null
+  saveError.value = null
+
+  if (!file.type.startsWith('image/')) {
+    saveError.value = 'Bitte eine Bilddatei auswaehlen.'
+    input.value = ''
+    return
+  }
+
+  if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+    saveError.value = 'Das Bild ist zu gross. Bitte unter 1,5 MB bleiben.'
+    input.value = ''
+    return
+  }
+
+  try {
+    activeSheet.value.profileImage = await readFileAsDataUrl(file)
+  } catch (error) {
+    console.error(error)
+    saveError.value = 'Bild konnte nicht geladen werden.'
+  } finally {
+    input.value = ''
+  }
+}
+
+function removeProfileImage() {
+  if (!activeSheet.value) {
+    return
+  }
+
+  activeSheet.value.profileImage = ''
+  saveSuccess.value = null
+  saveError.value = null
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
 async function deleteSheet(sheet: SheetRecord) {
   if (!sheet.id) {
     return
@@ -735,7 +790,31 @@ function upsertSheet(sheet: SheetRecord) {
     <div v-if="activeSheet" class="modal-overlay" @click.self="closeSheetEditor">
       <form class="sheet-window" @submit.prevent="saveActiveSheet">
         <header class="sheet-header">
-          <h2>{{ activeSheet.sheetType === 'character' ? 'Charakter' : 'Monster' }}</h2>
+          <div class="sheet-title-area">
+            <h2>{{ activeSheet.sheetType === 'character' ? 'Charakter' : 'Monster' }}</h2>
+
+            <div class="profile-control">
+              <div class="profile-preview">
+                <img v-if="activeSheet.profileImage" :src="activeSheet.profileImage" alt="" />
+                <span v-else>Bild</span>
+              </div>
+              <div class="profile-buttons">
+                <label class="profile-upload">
+                  Hochladen
+                  <input type="file" accept="image/*" @change="handleProfileImageUpload" />
+                </label>
+                <button
+                  v-if="activeSheet.profileImage"
+                  class="profile-remove"
+                  type="button"
+                  @click="removeProfileImage"
+                >
+                  Entfernen
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="sheet-actions">
             <span v-if="saveSuccess" class="success-msg">{{ saveSuccess }}</span>
             <span v-if="saveError" class="error-msg">{{ saveError }}</span>
@@ -945,7 +1024,7 @@ function upsertSheet(sheet: SheetRecord) {
 
 .auth-card {
   position: relative;
-  width: min(420px, 100%);
+  width: min(480px, 100%);
   padding: 28px;
   border: 1px solid rgba(244, 223, 178, 0.28);
   border-radius: 8px;
@@ -1093,8 +1172,8 @@ button:disabled {
   min-height: 100vh;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 0%, rgba(214, 154, 56, 0.2), transparent 28%),
-    linear-gradient(135deg, #16120f, #27221d 52%, #141211);
+    linear-gradient(rgba(12, 8, 6, 0.72), rgba(12, 8, 6, 0.78)),
+    url('/camping.jpg') center / cover;
 }
 
 .topbar {
@@ -1245,11 +1324,73 @@ button:disabled {
   background: #fbf6e9;
 }
 
+.sheet-title-area {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
 .sheet-header h2 {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(34px, 7vw, 64px);
   font-weight: 900;
   line-height: 0.95;
+}
+
+.profile-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-preview {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border: 3px solid #111;
+  border-radius: 4px;
+  background: #fffaf0;
+  color: #111;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-buttons {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-upload,
+.profile-remove {
+  min-height: 31px;
+  padding: 6px 10px;
+  border: 1px solid #111;
+  border-radius: 5px;
+  background: #fffaf0;
+  color: #111;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.profile-upload input {
+  display: none;
+}
+
+.profile-remove {
+  background: #7d1f16;
+  color: #fffaf0;
 }
 
 .sheet-actions {
@@ -1374,6 +1515,7 @@ button:disabled {
 
   .topbar,
   .list-toolbar,
+  .sheet-title-area,
   .sheet-header {
     align-items: flex-start;
     flex-direction: column;

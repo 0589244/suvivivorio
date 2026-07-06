@@ -40,11 +40,18 @@ function formatDate(value?: string) {
       type="button"
       @click="emit('select', entry)"
     >
-      <span class="type-tag" :data-type="entry.sheetType">
-        {{ entry.sheetType === 'character' ? 'Charakter' : 'Monster' }}
+      <span class="sheet-card-content">
+        <span class="type-tag" :data-type="entry.sheetType">
+          {{ entry.sheetType === 'character' ? 'Charakter' : 'Monster' }}
+        </span>
+        <strong>{{ entry.name || 'Unbenanntes Sheet' }}</strong>
+        <small>{{ formatDate(entry.createdAt) }}</small>
       </span>
-      <strong>{{ entry.name || 'Unbenanntes Sheet' }}</strong>
-      <small>{{ formatDate(entry.createdAt) }}</small>
+
+      <span class="sheet-avatar" aria-hidden="true">
+        <img v-if="entry.profileImage" :src="entry.profileImage" class="sheet-avatar-image" alt="" />
+        <span v-else>{{ entry.sheetType === 'character' ? 'C' : 'M' }}</span>
+      </span>
     </button>
   </div>
 </template>
@@ -69,7 +76,9 @@ function formatDate(value?: string) {
 
 .sheet-card {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  gap: 12px;
+  align-items: center;
   width: 100%;
   padding: 13px 14px;
   border: 1px solid rgba(244, 223, 178, 0.2);
@@ -77,6 +86,12 @@ function formatDate(value?: string) {
   background: rgba(255, 250, 238, 0.92);
   color: #18110c;
   text-align: left;
+}
+
+.sheet-card-content {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .sheet-card:hover {
@@ -108,5 +123,26 @@ function formatDate(value?: string) {
 
 .type-tag[data-type='monster'] {
   background: #6c2d23;
+}
+
+.sheet-avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border: 2px solid rgba(28, 21, 16, 0.9);
+  border-radius: 6px;
+  background: #f8e4b9;
+  color: #1c1510;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.sheet-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

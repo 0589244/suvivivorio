@@ -23,6 +23,7 @@ export type CharacterSheet = {
   talentsSpells: string
   attacks: string
   gear: string
+  profileImage: string
   gp: number
   sp: number
   cp: number
@@ -46,6 +47,7 @@ export type MonsterSheet = {
   cha: number
   attacks: string
   gear: string
+  profileImage: string
   gp: number
   sp: number
   cp: number

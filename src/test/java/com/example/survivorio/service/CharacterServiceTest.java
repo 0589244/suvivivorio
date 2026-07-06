@@ -63,6 +63,7 @@ class CharacterServiceTest {
         data.setHp(18);
         data.setAc(12);
         data.setGear("Spellbook");
+        data.setProfileImage("data:image/png;base64,portrait");
         data.setCreatedAt("new-date");
 
         when(repository.findByIdAndOwner(7L, owner)).thenReturn(Optional.of(existing));
@@ -76,6 +77,7 @@ class CharacterServiceTest {
         assertThat(updated.getHp()).isEqualTo(18);
         assertThat(updated.getAc()).isEqualTo(12);
         assertThat(updated.getGear()).isEqualTo("Spellbook");
+        assertThat(updated.getProfileImage()).isEqualTo("data:image/png;base64,portrait");
         assertThat(updated.getOwner()).isSameAs(owner);
         assertThat(updated.getCreatedAt()).isEqualTo("new-date");
         verify(repository).findByIdAndOwner(7L, owner);

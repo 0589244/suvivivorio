@@ -28,6 +28,7 @@ const entries: SheetRecord[] = [
     talentsSpells: 'Tracking',
     attacks: 'Bow',
     gear: 'Rope',
+    profileImage: 'data:image/png;base64,portrait',
     gp: 10,
     sp: 2,
     cp: 0,
@@ -50,6 +51,7 @@ const entries: SheetRecord[] = [
     cha: 10,
     attacks: 'Scimitar',
     gear: 'Shield',
+    profileImage: '',
     gp: 5,
     sp: 8,
     cp: 12,
@@ -69,6 +71,11 @@ describe('SheetList', () => {
 
     expect(wrapper.text()).toContain('Aelar')
     expect(wrapper.text()).toContain('Bandit Captain')
+    const firstEntry = entries[0]
+    if (!firstEntry) {
+      throw new Error('Expected a first sheet entry')
+    }
+    expect(wrapper.find('.sheet-avatar-image').attributes('src')).toBe(firstEntry.profileImage)
     const cards = wrapper.findAll('.sheet-card')
     expect(cards).toHaveLength(2)
 

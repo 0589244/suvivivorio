@@ -57,6 +57,7 @@ public class CharacterService {
         existing.setTalentsSpells(data.getTalentsSpells());
         existing.setAttacks(data.getAttacks());
         existing.setGear(data.getGear());
+        existing.setProfileImage(data.getProfileImage());
         existing.setGp(data.getGp());
         existing.setSp(data.getSp());
         existing.setCp(data.getCp());

@@ -1,6 +1,7 @@
 package com.example.survivorio.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -39,6 +40,8 @@ public class Character {
     private String talentsSpells;
     private String attacks;
     private String gear;
+    @Column(columnDefinition = "TEXT")
+    private String profileImage;
     private int gp;
     private int sp;
     private int cp;
@@ -169,6 +172,9 @@ public class Character {
 
     public String getGear() { return gear; }
     public void setGear(String gear) { this.gear = gear; }
+
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 
     public int getGp() { return gp; }
     public void setGp(int gp) { this.gp = gp; }
